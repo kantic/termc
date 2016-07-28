@@ -1,0 +1,4 @@
+target
+.idea
+termc_model/.idea/*
+termc_ui/.idea/*

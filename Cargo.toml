@@ -1,0 +1,12 @@
+[package]
+name = "termc"
+version = "0.1.0"
+authors = ["jonas"]
+
+[dependencies]
+
+[dependencies.termc_model]
+path = "termc_model"
+
+[dependencies.termc_ui]
+path = "termc_ui"
