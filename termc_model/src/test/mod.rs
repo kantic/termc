@@ -48,4 +48,8 @@ fn tst_get_result() {
     let result = get_result("exp(ln(3))", & context);
     assert!(result.is_ok());
     assert!(result.ok().unwrap() - 3.0 < 10e-10);
+
+    let result = get_result("pi - 9 / 2 ^- 0.7", & context);
+    assert!(result.is_ok());
+    assert!(result.ok().unwrap() + 11.478950480 < 10e-10);
 }

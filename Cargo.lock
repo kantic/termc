@@ -22,9 +22,6 @@ dependencies = [
 [[package]]
 name = "termc_model"
 version = "0.1.0"
-dependencies = [
- "ncurses 5.80.0 (registry+https://github.com/rust-lang/crates.io-index)",
-]
 
 [[package]]
 name = "termc_ui"
