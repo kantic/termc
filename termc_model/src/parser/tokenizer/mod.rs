@@ -141,7 +141,7 @@ impl<'a> Tokenizer<'a> {
     /// input stream.
     pub fn get_pos(&self) -> u32 {
         match self.token {
-            Ok(ref x) => self.input_stream.get_pos() - (x.get_value().len() as u32),
+            Ok(ref x) => self.input_stream.get_pos() - (x.get_value().chars().count() as u32),
             Err(_) => self.input_stream.get_pos() - 1
         }
     }
@@ -214,7 +214,6 @@ impl<'a> Tokenizer<'a> {
                 value.push(self.input_stream.next().unwrap());
             }
             else if peeked_char == '.' && is_first_digit {
-                value.push('0');
                 value.push(self.input_stream.next().unwrap());
             }
             else if peeked_char == '.' {

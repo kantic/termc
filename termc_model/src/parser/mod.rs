@@ -21,7 +21,7 @@ impl fmt::Display for ParseError {
     /// Returns the formatted error message.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            ParseError::ExpectedError(ref symbol, ref location) => write!(f, "Error: expected {}:\n{}",
+            ParseError::ExpectedError(ref symbol, ref location) => write!(f, "Error: Expected {}.\n{}",
                                                                   & symbol, & location),
             ParseError::InputError(ref e) => write!(f, "{}", e)
         }
