@@ -12,6 +12,8 @@ It supports the basic operations ("+", "-", "*", "/" and "^") as well as the fol
 - ln
 - exp
 - sqrt
+- pow (e.g. "pow(5, 2)" = 25)
+- root (e.g. "root(4, 2)" = 2)
 
 Futhermore, the following constants are supported:
 - e
