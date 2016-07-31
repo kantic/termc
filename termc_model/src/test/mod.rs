@@ -149,10 +149,20 @@ fn tst_get_result() {
     assert!(result.is_ok());
     assert!(result.ok().unwrap() - 87.0 < TEST_BOUND);
 
-    // test nested functions
-    let result = get_result("cos(exp(0.5)+pi/2*ln(2))", & context);
+    // test pow function
+    let result = get_result("pow(5, 2)", & context);
     assert!(result.is_ok());
-    assert!(result.ok().unwrap() + 0.919465158 < TEST_BOUND);
+    assert!(result.ok().unwrap() - 25.0 < TEST_BOUND);
+
+    // test root function
+    let result = get_result("root(25, 2)", & context);
+    assert!(result.is_ok());
+    assert!(result.ok().unwrap() - 5.0 < TEST_BOUND);
+
+    // test nested functions
+    let result = get_result("cos(exp(0.5)+pi/2*ln(2))-root(1, 2)", & context);
+    assert!(result.is_ok());
+    assert!(result.ok().unwrap() + 1.919465158 < TEST_BOUND);
 
     // Complex expression tests
 
@@ -237,4 +247,22 @@ fn tst_get_result() {
     assert!(result.is_err());
     let msg = format!("{}", result.err().unwrap());
     assert!(msg == "Error: Unknown token found: \"|\".\n5+|\n  ^~~~ ");
+
+    // test expectation of ")" in argument list
+    let result = get_result("pow(5,", & context);
+    assert!(result.is_err());
+    let msg = format!("{}", result.err().unwrap());
+    assert!(msg == "Error: Expected symbol \")\".\npow(5,\n      ^~~~ ");
+
+    // test argument number for functions
+    let result = get_result("pow(5)", & context);
+    assert!(result.is_err());
+    let msg = format!("{}", result.err().unwrap());
+    assert!(msg == "Error: Expected 2 argument(s).\npow(5)\n     ^~~~ ");
+
+    // test expectation of argument in function argument list
+    let result = get_result("pow(5,)", & context);
+    assert!(result.is_err());
+    let msg = format!("{}", result.err().unwrap());
+    assert!(msg == "Error: Expected an argument.\npow(5,)\n      ^~~~ Found: symbol \")\".");
 }

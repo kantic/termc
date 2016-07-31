@@ -95,41 +95,56 @@ impl<'a> Evaluator<'a> {
                 if f_type.is_none() {
                     return None;
                 }
-                let f_type = f_type.unwrap();
 
-                let arg = self.recursive_evaluate(subtree.successors[0].as_ref());
-                if arg.is_none() {
+                let n_successors = subtree.successors.len() as u32;
+                let n_args = self.context.get_function_arg_num(subtree.content.get_value()).unwrap_or(0);
+                if n_successors != n_args {
                     return None;
                 }
-                let arg = arg.unwrap();
+
+                let f_type = f_type.unwrap();
+
+                let mut args : Vec<f64> = Vec::new();
+                for s in subtree.successors.iter() {
+                    match self.recursive_evaluate(s.as_ref()) {
+                        Some(x) => args.push(x),
+                        None => return None
+                    }
+                }
 
                 match f_type {
                     FunctionType::Cos => {
-                        Some(arg.cos())
+                        Some(args[0].cos())
                     },
                     FunctionType::Sin => {
-                        Some(arg.sin())
+                        Some(args[0].sin())
                     },
                     FunctionType::Tan => {
-                        Some(arg.tan())
+                        Some(args[0].tan())
                     },
                     FunctionType::Exp => {
-                        Some(arg.exp())
+                        Some(args[0].exp())
                     },
                     FunctionType::Cosh => {
-                        Some(arg.cosh())
+                        Some(args[0].cosh())
                     },
                     FunctionType::Sinh => {
-                        Some(arg.sinh())
+                        Some(args[0].sinh())
                     },
                     FunctionType::Tanh => {
-                        Some(arg.tanh())
+                        Some(args[0].tanh())
                     },
                     FunctionType::Sqrt => {
-                        Some(arg.sqrt())
+                        Some(args[0].sqrt())
                     },
                     FunctionType::Ln => {
-                        Some(arg.ln())
+                        Some(args[0].ln())
+                    },
+                    FunctionType::Pow => {
+                        Some(args[0].powf(args[1]))
+                    },
+                    FunctionType::Root => {
+                        Some(args[0].powf(1.0/args[1]))
                     }
                 }
             },

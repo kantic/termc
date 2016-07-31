@@ -22,7 +22,9 @@ pub enum FunctionType {
     Cosh,
     Tanh,
     Sqrt,
-    Ln
+    Ln,
+    Pow,
+    Root
 }
 
 /// Defines the mathematical context.
@@ -34,7 +36,7 @@ pub struct MathContext {
     /// Set of symbols representing words.
     literals : HashSet<char>,
     /// Set of functions.
-    functions: HashMap<String, FunctionType>,
+    functions: HashMap<String, (FunctionType, u32)>,
     /// Map of supported constants.
     constants : HashMap<String, f64>,
     /// Set of punctuation symbols.
@@ -72,16 +74,18 @@ impl<'a> MathContext {
         operations.insert(String::from("^"), (OperationType::Pow, 3));
 
         // defines functions types with associated with their string representation
-        let mut functions: HashMap<String, FunctionType> = HashMap::new();
-        functions.insert(String::from("cos"), FunctionType::Cos);
-        functions.insert(String::from("cosh"), FunctionType::Cosh);
-        functions.insert(String::from("sin"), FunctionType::Sin);
-        functions.insert(String::from("sinh"), FunctionType::Sinh);
-        functions.insert(String::from("tan"), FunctionType::Tan);
-        functions.insert(String::from("tanh"), FunctionType::Tanh);
-        functions.insert(String::from("exp"), FunctionType::Exp);
-        functions.insert(String::from("sqrt"), FunctionType::Sqrt);
-        functions.insert(String::from("ln"), FunctionType::Ln);
+        let mut functions: HashMap<String, (FunctionType, u32)> = HashMap::new();
+        functions.insert(String::from("cos"), (FunctionType::Cos, 1));
+        functions.insert(String::from("cosh"), (FunctionType::Cosh, 1));
+        functions.insert(String::from("sin"), (FunctionType::Sin, 1));
+        functions.insert(String::from("sinh"), (FunctionType::Sinh, 1));
+        functions.insert(String::from("tan"), (FunctionType::Tan, 1));
+        functions.insert(String::from("tanh"), (FunctionType::Tanh, 1));
+        functions.insert(String::from("exp"), (FunctionType::Exp, 1));
+        functions.insert(String::from("sqrt"), (FunctionType::Sqrt, 1));
+        functions.insert(String::from("ln"), (FunctionType::Ln, 1));
+        functions.insert(String::from("pow"), (FunctionType::Pow, 2));
+        functions.insert(String::from("root"), (FunctionType::Root, 2));
 
         // defines constants
         let mut constants: HashMap<String, f64> = HashMap::new();
@@ -91,6 +95,7 @@ impl<'a> MathContext {
         let mut punctuation: HashSet<char> = HashSet::new();
         punctuation.insert('(');
         punctuation.insert(')');
+        punctuation.insert(',');
 
         MathContext {
             operations: operations, number_symbols: number_symbols, literals: literals,
@@ -276,7 +281,7 @@ impl<'a> MathContext {
         }
     }
 
-    /// Gets the function type of the specified function string representation.
+    /// Returns the function type of the specified function string representation.
     ///
     /// # Examples
     ///
@@ -288,6 +293,27 @@ impl<'a> MathContext {
     /// assert!(func_type == Some(FunctionType::Cosh));
     /// ```
     pub fn get_function_type(&self, s: &'a str) -> Option<FunctionType> {
-        self.functions.get(s).cloned()
+        match self.functions.get(s) {
+            Some(ref x) => Some(x.0),
+            None => None
+        }
+    }
+
+    /// Returns the number of arguments for the specified function
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use termc_model::math_context::MathContext;
+    ///
+    /// let context = MathContext::new();
+    /// let n_args = context.get_function_arg_num("pow");
+    /// assert!(n_args == Some(2));
+    /// ```
+    pub fn get_function_arg_num(&self, s: &'a str) -> Option<u32> {
+        match self.functions.get(s) {
+            Some(ref x) => Some(x.1),
+            None => None
+        }
     }
 }

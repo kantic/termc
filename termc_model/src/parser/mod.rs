@@ -194,12 +194,63 @@ impl<'a> Parser<'a> {
     fn parse_function(&mut self, t: Token) -> Result<TreeNode<Token>, ParseError> {
 
         try!(self.skip_punc("("));
-        let expr = try!(self.parse_expression());
+        let args = try!(self.parse_function_arg_list());
+        let pos = self.tokenizer.get_pos();
         try!(self.skip_punc(")"));
 
+        let n_args = self.context.get_function_arg_num(t.get_value()).unwrap_or(0);
+        if (args.len() as u32) != n_args {
+            return Err(ParseError::ExpectedError(format!("{} argument(s)", n_args), self.tokenizer.get_err_string(pos, "")));
+        }
+
         let mut ret = TreeNode::new(t);
-        ret.successors.push(Box::new(expr)); // add the function argument as a subtree to the function
+        // add the function arguments as a subtrees to the function
+        for arg in args.into_iter() {
+            ret.successors.push(Box::new(arg));
+        }
         Ok(ret)
+    }
+
+    /// Parses the argument list of a function call.
+    fn parse_function_arg_list(&mut self) -> Result<Vec<TreeNode<Token>>, ParseError> {
+
+        let mut args : Vec<TreeNode<Token>> = Vec::new();
+        if self.tokenizer.eof() || self.is_punc(")") {
+            // The function call has no arguments
+            return Ok(args);
+        }
+
+        while !self.tokenizer.eof() {
+            let arg = try!(self.parse_expression());
+            args.push(arg);
+
+            if self.tokenizer.eof() {
+                break;
+            }
+
+            if self.is_punc(",") {
+                try!(self.skip_punc(","));
+                if self.is_punc(")") {
+                    let pos = self.tokenizer.get_pos();
+                    return Err(ParseError::ExpectedError(String::from("an argument"),
+                                                         self.tokenizer.get_err_string(pos, & format!("Found: symbol \")\"."))));
+                }
+            }
+            else if self.is_punc(")") {
+                // All arguments have been parsed
+                break;
+            }
+            else {
+                // If in the argument list after an expression neither a "," symbol nor an ")" occurs,
+                // return an error
+                let pos = self.tokenizer.get_pos();
+                let peeked = try!(self.tokenizer.peek());  // this should be safe because it has been tested for eof
+                return Err(ParseError::ExpectedError(String::from("\",\" or \")\""),
+                                                     self.tokenizer.get_err_string(pos, & format!("Found: \"{}\".", peeked))));
+            }
+        }
+
+        Ok(args)
     }
 
     /// Parses an operation expression tree while making the distinction between unary and binary
