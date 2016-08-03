@@ -4,4 +4,4 @@ version = "0.1.0"
 authors = ["jonas"]
 
 [dependencies]
-ncurses = "5.80.0"
+termion = "1.0.5"
