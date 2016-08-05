@@ -4,7 +4,7 @@ extern crate termc_ui;
 use std::env;
 use termc_model::get_result;
 use termc_model::math_context::MathContext;
-use termc_ui::TerminalUI;
+use termc_ui::{create_terminal_handle, TerminalUI};
 
 /// The main entry point.
 pub fn main() {
@@ -50,7 +50,7 @@ fn start_call(args: & Vec<String>) {
 /// Starts termc in command line interactive mode.
 fn start_interactive() {
 
-    let mut terminal = TerminalUI::new();
+    let mut terminal = create_terminal_handle();
     terminal.init();
     let context = MathContext::new();
 
