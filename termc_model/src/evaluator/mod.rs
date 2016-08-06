@@ -122,6 +122,9 @@ impl<'a> Evaluator<'a> {
                     FunctionType::Tan => {
                         Some(args[0].tan())
                     },
+                    FunctionType::Cot => {
+                        Some(args[0].cos() / args[0].sin())
+                    }
                     FunctionType::Exp => {
                         Some(args[0].exp())
                     },
@@ -145,6 +148,18 @@ impl<'a> Evaluator<'a> {
                     },
                     FunctionType::Root => {
                         Some(args[0].powf(1.0/args[1]))
+                    },
+                    FunctionType::ArcCos => {
+                        Some(args[0].acos())
+                    },
+                    FunctionType::ArcSin => {
+                        Some(args[0].asin())
+                    },
+                    FunctionType::ArcTan => {
+                        Some(args[0].atan())
+                    },
+                    FunctionType::ArcCot => {
+                        Some(f64::consts::PI / 2.0 - args[0].atan())
                     }
                 }
             },

@@ -17,6 +17,7 @@ pub enum FunctionType {
     Cos,
     Sin,
     Tan,
+    Cot,
     Exp,
     Sinh,
     Cosh,
@@ -24,7 +25,11 @@ pub enum FunctionType {
     Sqrt,
     Ln,
     Pow,
-    Root
+    Root,
+    ArcCos,
+    ArcSin,
+    ArcTan,
+    ArcCot
 }
 
 /// Defines the mathematical context.
@@ -76,16 +81,25 @@ impl<'a> MathContext {
         // defines functions types with associated with their string representation
         let mut functions: HashMap<String, (FunctionType, u32)> = HashMap::new();
         functions.insert(String::from("cos"), (FunctionType::Cos, 1));
-        functions.insert(String::from("cosh"), (FunctionType::Cosh, 1));
         functions.insert(String::from("sin"), (FunctionType::Sin, 1));
-        functions.insert(String::from("sinh"), (FunctionType::Sinh, 1));
         functions.insert(String::from("tan"), (FunctionType::Tan, 1));
+        functions.insert(String::from("cot"), (FunctionType::Cot, 1));
+        functions.insert(String::from("cosh"), (FunctionType::Cosh, 1));
+        functions.insert(String::from("sinh"), (FunctionType::Sinh, 1));
         functions.insert(String::from("tanh"), (FunctionType::Tanh, 1));
         functions.insert(String::from("exp"), (FunctionType::Exp, 1));
         functions.insert(String::from("sqrt"), (FunctionType::Sqrt, 1));
         functions.insert(String::from("ln"), (FunctionType::Ln, 1));
         functions.insert(String::from("pow"), (FunctionType::Pow, 2));
         functions.insert(String::from("root"), (FunctionType::Root, 2));
+        functions.insert(String::from("arccos"), (FunctionType::ArcCos, 1));
+        functions.insert(String::from("acos"), (FunctionType::ArcCos, 1));
+        functions.insert(String::from("arcsin"), (FunctionType::ArcSin, 1));
+        functions.insert(String::from("asin"), (FunctionType::ArcSin, 1));
+        functions.insert(String::from("arctan"), (FunctionType::ArcTan, 1));
+        functions.insert(String::from("atan"), (FunctionType::ArcTan, 1));
+        functions.insert(String::from("arccot"), (FunctionType::ArcCot, 1));
+        functions.insert(String::from("acot"), (FunctionType::ArcCot, 1));
 
         // defines constants
         let mut constants: HashMap<String, f64> = HashMap::new();

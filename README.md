@@ -6,6 +6,11 @@ It supports the basic operations ("+", "-", "*", "/" and "^") as well as the fol
 - cos
 - sin
 - tan
+- cot
+- acos
+- asin
+- atan
+- acot
 - cosh
 - sinh
 - tanh
