@@ -169,6 +169,31 @@ fn tst_get_result() {
     assert!(result.result_type == MathResultType::Real);
     assert!(result.value.re - 0.483055065 < TEST_BOUND);
 
+    // test cot function
+    let result = get_result("cot(7)", & context);
+    assert!(result.is_ok());
+    assert!(result.ok().unwrap() - 1.147515422 < TEST_BOUND);
+
+    // test acos function
+    let result = get_result("acos(cos(pi))", & context);
+    assert!(result.is_ok());
+    assert!(result.ok().unwrap() - f64::consts::PI < TEST_BOUND);
+
+    // test asin function
+    let result = get_result("asin(sin(pi/3))", & context);
+    assert!(result.is_ok());
+    assert!(result.ok().unwrap() - f64::consts::PI / 3.0 < TEST_BOUND);
+
+    // test atan function
+    let result = get_result("atan(tan(pi/7))", & context);
+    assert!(result.is_ok());
+    assert!(result.ok().unwrap() - f64::consts::PI / 7.0 < TEST_BOUND);
+
+    // test acot function
+    let result = get_result("acot(cot(pi/4))", & context);
+    assert!(result.is_ok());
+    assert!(result.ok().unwrap() - f64::consts::PI / 4.0 < TEST_BOUND);
+
     // test cosh function
     let result = get_result("cosh(0.7897)", & context);
     assert!(result.is_ok());
