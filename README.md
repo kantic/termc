@@ -49,5 +49,5 @@ ans: 35
 ```
 
 ## License
-[GNU LESSER GENERAL PUBLIC LICENSE Version 3, 29 June 2007](https://www.gnu.org/licenses/gpl.html)
+[GNU GENERAL PUBLIC LICENSE Version 3, 29 June 2007](https://www.gnu.org/licenses/gpl.html)
 A copy of the license can be found in the root directory of this repository.
