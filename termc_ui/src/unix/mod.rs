@@ -254,6 +254,7 @@ impl TerminalHandle {
             if self.y > term_size.1 {
                 self.y = term_size.1;
                 self.input_base_line -= 1;
+                write!(stdout, "\n{}", termion::cursor::Goto(self.x, self.y)).expect(WRT_ERR_MSG);
             }
         }
 
