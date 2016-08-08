@@ -171,7 +171,7 @@ impl<'a> Evaluator<'a> {
                     },
                     FunctionType::ArcCos => {
                         if result_type == MathResultType::Real {
-                            if !(args[0].value.re <= f64::consts::PI && args[0].value.re >= 0.0) {
+                            if !(args[0].value.re <= 1.0 && args[0].value.re >= -1.0) {
                                 result_type = MathResultType::Complex;
                             }
                         }
@@ -179,9 +179,7 @@ impl<'a> Evaluator<'a> {
                     },
                     FunctionType::ArcSin => {
                         if result_type == MathResultType::Real {
-                            if !(args[0].value.re <= f64::consts::PI / 2.0 &&
-                                args[0].value.re >= - f64::consts::PI / 2.0) {
-
+                            if !(args[0].value.re <= 1.0 && args[0].value.re >= -1.0) {
                                 result_type = MathResultType::Complex;
                             }
                         }

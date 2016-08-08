@@ -172,27 +172,53 @@ fn tst_get_result() {
     // test cot function
     let result = get_result("cot(7)", & context);
     assert!(result.is_ok());
-    assert!(result.ok().unwrap() - 1.147515422 < TEST_BOUND);
+    let result = result.ok().unwrap();
+    assert!(result.result_type == MathResultType::Real);
+    assert!(result.value.re - 1.147515422 < TEST_BOUND);
 
-    // test acos function
+    // test acos function (real)
     let result = get_result("acos(cos(pi))", & context);
     assert!(result.is_ok());
-    assert!(result.ok().unwrap() - f64::consts::PI < TEST_BOUND);
+    let result = result.ok().unwrap();
+    assert!(result.result_type == MathResultType::Real);
+    assert!(result.value.re - f64::consts::PI < TEST_BOUND);
 
-    // test asin function
+    // test acos function (complex)
+    let result = get_result("acos(45)", & context);
+    assert!(result.is_ok());
+    let result = result.ok().unwrap();
+    assert!(result.result_type == MathResultType::Complex);
+    assert!(result.value.re - 0.0 < TEST_BOUND);
+    assert!(result.value.im - 4.499686190 < TEST_BOUND);
+
+    // test asin function (real)
     let result = get_result("asin(sin(pi/3))", & context);
     assert!(result.is_ok());
-    assert!(result.ok().unwrap() - f64::consts::PI / 3.0 < TEST_BOUND);
+    let result = result.ok().unwrap();
+    assert!(result.result_type == MathResultType::Real);
+    assert!(result.value.re - f64::consts::PI / 3.0 < TEST_BOUND);
+
+    // test asin function (complex)
+    let result = get_result("asin(45)", & context);
+    assert!(result.is_ok());
+    let result = result.ok().unwrap();
+    assert!(result.result_type == MathResultType::Complex);
+    assert!(result.value.re - f64::consts::PI / 2.0 < TEST_BOUND);
+    assert!(result.value.im + 4.499686190 < TEST_BOUND);
 
     // test atan function
     let result = get_result("atan(tan(pi/7))", & context);
     assert!(result.is_ok());
-    assert!(result.ok().unwrap() - f64::consts::PI / 7.0 < TEST_BOUND);
+    let result = result.ok().unwrap();
+    assert!(result.result_type == MathResultType::Real);
+    assert!(result.value.re - f64::consts::PI / 7.0 < TEST_BOUND);
 
     // test acot function
     let result = get_result("acot(cot(pi/4))", & context);
     assert!(result.is_ok());
-    assert!(result.ok().unwrap() - f64::consts::PI / 4.0 < TEST_BOUND);
+    let result = result.ok().unwrap();
+    assert!(result.result_type == MathResultType::Real);
+    assert!(result.value.re - f64::consts::PI / 4.0 < TEST_BOUND);
 
     // test cosh function
     let result = get_result("cosh(0.7897)", & context);
