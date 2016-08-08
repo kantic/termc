@@ -1,7 +1,12 @@
 
+extern crate num;
+
 use std::f64;
-use math_context::{MathContext, OperationType, FunctionType};
+use std::str::FromStr;
+use num::complex::Complex;
+use math_context::{MathContext, OperationType, FunctionType, NumberType};
 use parser::tokenizer::{Token, TokenType};
+use math_result::{MathResult, MathResultType};
 use tree::TreeNode;
 
 /// The evaluator.
@@ -18,19 +23,24 @@ impl<'a> Evaluator<'a> {
     }
 
     /// Evaluates the specified expression tree.
-    pub fn evaluate(&self, tree: & TreeNode<Token>) -> Option<f64> {
+    pub fn evaluate(&self, tree: & TreeNode<Token>) -> Option<MathResult> {
         self.recursive_evaluate(tree)
     }
 
     /// Evaluates the specified subtree recursively by further splitting it into subtrees.
-    pub fn recursive_evaluate(&self, subtree: & TreeNode<Token>) -> Option<f64> {
+    pub fn recursive_evaluate(&self, subtree: & TreeNode<Token>) -> Option<MathResult> {
 
         let token_type = subtree.content.get_type();
 
         match token_type {
-            TokenType::Number => {
-                match subtree.content.get_value().parse() {
-                    Ok(x) => Some(x),
+            TokenType::Number(num_type) => {
+                match f64::from_str(subtree.content.get_value()) {
+                    Ok(x) => {
+                        match num_type {
+                            NumberType::Real => Some(MathResult::from(x)),
+                            NumberType::Complex => Some(MathResult::from(x * self.context.get_constant_value("i").unwrap().value))
+                        }
+                    },
                     Err(_) => None
                 }
             },
@@ -51,6 +61,7 @@ impl<'a> Evaluator<'a> {
                     return None;
                 }
                 let left_val = left_val.unwrap();
+                let mut result_type = left_val.result_type.clone();
 
                 if subtree.successors.len() == 2 {
                     let right_val = self.recursive_evaluate(subtree.successors[1].as_ref());
@@ -58,32 +69,35 @@ impl<'a> Evaluator<'a> {
                         return None;
                     }
                     let right_val = right_val.unwrap();
+                    if right_val.result_type == MathResultType::Complex {
+                        result_type = MathResultType::Complex;
+                    }
 
                     match op_type {
                         OperationType::Add => {
-                            Some(left_val + right_val)
+                            Some(MathResult::new(result_type, left_val.value + right_val.value))
                         },
                         OperationType::Sub => {
-                            Some(left_val - right_val)
+                            Some(MathResult::new(result_type, left_val.value - right_val.value))
                         },
                         OperationType::Mul => {
-                            Some(left_val * right_val)
+                            Some(MathResult::new(result_type, left_val.value * right_val.value))
                         },
                         OperationType::Div => {
-                            Some(left_val / right_val)
+                            Some(MathResult::new(result_type, left_val.value / right_val.value))
                         },
                         OperationType::Pow => {
-                            Some(left_val.powf(right_val))
+                            Some(calc_pow(& left_val, & right_val, result_type))
                         }
                     }
                 }
                 else {
                     match op_type {
                         OperationType::Add => {
-                            Some(0.0 + left_val)
+                            Some(MathResult::new(result_type, 0.0 + left_val.value))
                         },
                         OperationType::Sub => {
-                            Some(0.0 - left_val)
+                            Some(MathResult::new(result_type, 0.0 - left_val.value))
                         },
                         _ => None
                     }
@@ -104,62 +118,80 @@ impl<'a> Evaluator<'a> {
 
                 let f_type = f_type.unwrap();
 
-                let mut args : Vec<f64> = Vec::new();
+                let mut result_type = MathResultType::Real;
+                let mut args : Vec<MathResult> = Vec::new();
                 for s in subtree.successors.iter() {
                     match self.recursive_evaluate(s.as_ref()) {
-                        Some(x) => args.push(x),
+                        Some(x) => {
+                            if x.result_type == MathResultType::Complex {
+                                result_type = MathResultType::Complex;
+                            }
+                            args.push(x)
+                        },
                         None => return None
                     }
                 }
 
                 match f_type {
                     FunctionType::Cos => {
-                        Some(args[0].cos())
+                        Some(MathResult::new(result_type, args[0].value.cos()))
                     },
                     FunctionType::Sin => {
-                        Some(args[0].sin())
+                        Some(MathResult::new(result_type, args[0].value.sin()))
                     },
                     FunctionType::Tan => {
-                        Some(args[0].tan())
+                        Some(MathResult::new(result_type, args[0].value.tan()))
                     },
                     FunctionType::Cot => {
-                        Some(args[0].cos() / args[0].sin())
+                        Some(MathResult::new(result_type, args[0].value.cos() / args[0].value.sin()))
                     }
                     FunctionType::Exp => {
-                        Some(args[0].exp())
+                        Some(MathResult::new(result_type, args[0].value.exp()))
                     },
                     FunctionType::Cosh => {
-                        Some(args[0].cosh())
+                        Some(MathResult::new(result_type, args[0].value.cosh()))
                     },
                     FunctionType::Sinh => {
-                        Some(args[0].sinh())
+                        Some(MathResult::new(result_type, args[0].value.sinh()))
                     },
                     FunctionType::Tanh => {
-                        Some(args[0].tanh())
+                        Some(MathResult::new(result_type, args[0].value.tanh()))
                     },
                     FunctionType::Sqrt => {
-                        Some(args[0].sqrt())
+                        Some(MathResult::new(result_type, args[0].value.sqrt()))
                     },
                     FunctionType::Ln => {
-                        Some(args[0].ln())
+                        Some(MathResult::new(result_type, args[0].value.ln()))
                     },
                     FunctionType::Pow => {
-                        Some(args[0].powf(args[1]))
+                        Some(calc_pow(& args[0], & args[1], result_type))
                     },
                     FunctionType::Root => {
-                        Some(args[0].powf(1.0/args[1]))
+                        Some(calc_pow(& args[0], & MathResult::from(1.0 / args[1].value), result_type))
                     },
                     FunctionType::ArcCos => {
-                        Some(args[0].acos())
+                        if result_type == MathResultType::Real {
+                            if !(args[0].value.re <= f64::consts::PI && args[0].value.re >= 0.0) {
+                                result_type = MathResultType::Complex;
+                            }
+                        }
+                        Some(MathResult::new(result_type, args[0].value.acos()))
                     },
                     FunctionType::ArcSin => {
-                        Some(args[0].asin())
+                        if result_type == MathResultType::Real {
+                            if !(args[0].value.re <= f64::consts::PI / 2.0 &&
+                                args[0].value.re >= - f64::consts::PI / 2.0) {
+
+                                result_type = MathResultType::Complex;
+                            }
+                        }
+                        Some(MathResult::new(result_type, args[0].value.asin()))
                     },
                     FunctionType::ArcTan => {
-                        Some(args[0].atan())
+                        Some(MathResult::new(result_type, args[0].value.atan()))
                     },
                     FunctionType::ArcCot => {
-                        Some(f64::consts::PI / 2.0 - args[0].atan())
+                        Some(MathResult::new(result_type, f64::consts::PI / 2.0 - args[0].value.atan()))
                     }
                 }
             },
@@ -167,6 +199,31 @@ impl<'a> Evaluator<'a> {
             _ => {  // punctuation and unknown tokens should not occur in the evaluation method
                 None
             }
+        }
+    }
+}
+
+/// Computes the pow of two MathResult instances.
+fn calc_pow(left_val: & MathResult, right_val: & MathResult, result_type: MathResultType) -> MathResult {
+    match left_val.result_type {
+        MathResultType::Real => {
+            match right_val.result_type {
+                MathResultType::Real => {
+                    // ordinary pow, e.g. "a^b"
+                    MathResult::new(result_type, Complex::from(left_val.value.re.powf(right_val.value.re)))
+                },
+
+                MathResultType::Complex => {
+                    // exponent is complex, e.g. "a^(b+ci)" = "exp(ln(a) * (b+ci))"
+                    MathResult::new(result_type, (right_val.value * left_val.value.re.ln()).exp())
+                }
+            }
+        },
+
+        MathResultType::Complex =>  {
+            // base is complex, e.g. "(a+bi)^c" = "exp(ln(a+bi) * c)" or
+            // base and exponent are complex, e.g. "(a+bi)^(c+di)" = "exp(ln(a+bi) * (c+di))"
+            MathResult::new(result_type, (left_val.value.ln() * right_val.value).exp())
         }
     }
 }

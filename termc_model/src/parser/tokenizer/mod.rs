@@ -1,15 +1,17 @@
+extern crate num;
+
 pub mod input_stream;
 
 use std::fmt;
 use std::error::Error;
 use parser::tokenizer::input_stream::InputStream;
 use parser::tokenizer::input_stream::StreamEndError;
-use math_context::MathContext;
+use math_context::{MathContext, NumberType};
 
 /// Defines the types of tokens.
-#[derive(Clone, Copy, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Debug)]
 pub enum TokenType {
-    Number,
+    Number(NumberType),
     Constant,
     Function,
     Operation,
@@ -35,7 +37,7 @@ impl<'a> Token {
 
     /// Return the type of the token.
     pub fn get_type(&self) -> TokenType {
-        self.token_type
+        self.token_type.clone()
     }
 
     /// returns the string representation of the token.
@@ -206,6 +208,7 @@ impl<'a> Tokenizer<'a> {
 
         let mut value = String::new();
         let mut is_first_digit : bool = true;
+        let mut num_type = NumberType::Real;
 
         while !self.input_stream.eof() {
 
@@ -219,6 +222,12 @@ impl<'a> Tokenizer<'a> {
             else if peeked_char == '.' {
                 value.push(self.input_stream.next().unwrap());
             }
+            else if peeked_char == 'i' && !is_first_digit {
+                num_type = NumberType::Complex;
+                self.input_stream.next().unwrap();
+                //value.push(self.input_stream.next().unwrap());
+                break;
+            }
             else {
                 break;
             }
@@ -226,7 +235,7 @@ impl<'a> Tokenizer<'a> {
             is_first_digit = false;
         }
 
-        Token::new(TokenType::Number, &value)
+        Token::new(TokenType::Number(num_type), &value)
     }
 
     /// Reads a constant or a function token from the input stream.

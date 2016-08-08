@@ -4,7 +4,7 @@ use std::fmt;
 use std::error::Error;
 use parser::tokenizer::{Tokenizer, TokenType, TokenError, Token};
 use parser::tokenizer::input_stream::StreamEndError;
-use math_context::MathContext;
+use math_context::{MathContext, NumberType};
 use tree::TreeNode;
 
 /// Defines the errors that may occur when parsing the user input string.
@@ -152,8 +152,8 @@ impl<'a> Parser<'a> {
             let token_type = t.get_type();
 
             match token_type {
-                TokenType::Number => {
-                    Ok(TreeNode::new(Token::new(TokenType::Number, t.get_value())))
+                TokenType::Number(num_type) => {
+                    Ok(TreeNode::new(Token::new(TokenType::Number(num_type), t.get_value())))
                 },
                 TokenType::Constant => {
                     Ok(TreeNode::new(Token::new(TokenType::Constant, t.get_value())))
@@ -386,7 +386,8 @@ impl<'a> Parser<'a> {
                                                                                            t.content.get_value()))))
             }
         }
-        else if t_type == TokenType::Number || t_type == TokenType::Constant || t_type == TokenType::Function || t.successors.len() > 0 {
+        else if t_type == TokenType::Number(NumberType::Real) || t_type == TokenType::Number(NumberType::Complex) ||
+            t_type == TokenType::Constant || t_type == TokenType::Function || t.successors.len() > 0 {
 
             m_left.successors.push(Box::new(t));
             Ok(m_left)

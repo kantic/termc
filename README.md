@@ -23,6 +23,7 @@ It supports the basic operations ("+", "-", "*", "/" and "^") as well as the fol
 Futhermore, the following constants are supported:
 - e
 - pi
+- i (the imaginary unit)
 
 ## Modes of Operation
 termc supports two different modes of operation.

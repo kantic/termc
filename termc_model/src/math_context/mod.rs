@@ -1,8 +1,20 @@
+
+extern crate num;
+
 use std::f64;
 use std::collections::{HashMap, HashSet};
+use num::complex::Complex;
+use math_result::MathResult;
+
+/// Defines the sets of numbers.
+#[derive(Clone, PartialEq, Debug)]
+pub enum NumberType {
+    Real,
+    Complex
+}
 
 /// Defines the types of supported operations.
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, PartialEq)]
 pub enum OperationType {
     Add,
     Sub,
@@ -12,7 +24,7 @@ pub enum OperationType {
 }
 
 /// Defines the types of supported built-in functions.
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, PartialEq)]
 pub enum FunctionType {
     Cos,
     Sin,
@@ -34,16 +46,16 @@ pub enum FunctionType {
 
 /// Defines the mathematical context.
 pub struct MathContext {
-    /// Map of supported operations.
+    /// Map of supported operations (operation type and precedence).
     operations: HashMap<String, (OperationType, u32)>,
     /// Set of symbols representing numbers.
     number_symbols: HashSet<char>,
     /// Set of symbols representing words.
     literals : HashSet<char>,
-    /// Set of functions.
+    /// Set of functions (function type and number of arguments).
     functions: HashMap<String, (FunctionType, u32)>,
-    /// Map of supported constants.
-    constants : HashMap<String, f64>,
+    /// Map of supported constants (constant representation and value).
+    constants : HashMap<String, MathResult>,
     /// Set of punctuation symbols.
     punctuation : HashSet<char>
 }
@@ -102,9 +114,10 @@ impl<'a> MathContext {
         functions.insert(String::from("acot"), (FunctionType::ArcCot, 1));
 
         // defines constants
-        let mut constants: HashMap<String, f64> = HashMap::new();
-        constants.insert(String::from("pi"), f64::consts::PI);
-        constants.insert(String::from("e"), f64::consts::E);
+        let mut constants: HashMap<String, MathResult> = HashMap::new();
+        constants.insert(String::from("pi"), MathResult::from(f64::consts::PI));
+        constants.insert(String::from("e"), MathResult::from(f64::consts::E));
+        constants.insert(String::from("i"), MathResult::from(Complex::i()));  // the imaginary unit
 
         let mut punctuation: HashSet<char> = HashSet::new();
         punctuation.insert('(');
@@ -241,21 +254,38 @@ impl<'a> MathContext {
     /// # Examples
     ///
     /// ```
+    /// extern crate num;
+    /// extern crate termc_model;
+    ///
+    /// use num::complex::Complex;
     /// use termc_model::math_context::MathContext;
+    /// use termc_model::math_result::MathResultType;
     /// use std::f64;
     ///
-    /// let context = MathContext::new();
-    /// let const_val = context.get_constant_value("pi");
-    /// assert!(const_val.is_some());
-    /// let const_val = const_val.unwrap();
-    /// assert!(const_val - f64::consts::PI < 10e-10);
+    /// fn main() {
+    ///     let context = MathContext::new();
     ///
-    /// let const_val = context.get_constant_value("e");
-    /// assert!(const_val.is_some());
-    /// let const_val = const_val.unwrap();
-    /// assert!(const_val - f64::consts::E < 10e-10);
+    ///     let const_val = context.get_constant_value("pi");
+    ///     assert!(const_val.is_some());
+    ///     let const_val = const_val.unwrap();
+    ///     assert!(const_val.result_type == MathResultType::Real);
+    ///     assert!(const_val.value.re - f64::consts::PI < 10e-10);
+    ///
+    ///     let const_val = context.get_constant_value("e");
+    ///     assert!(const_val.is_some());
+    ///     let const_val = const_val.unwrap();
+    ///     assert!(const_val.result_type == MathResultType::Real);
+    ///     assert!(const_val.value.re - f64::consts::E < 10e-10);
+    ///
+    ///     let const_val = context.get_constant_value("i");
+    ///     assert!(const_val.is_some());
+    ///     let const_val = const_val.unwrap();
+    ///     assert!(const_val.result_type == MathResultType::Complex);
+    ///     assert!(const_val.value.re < 10e-10);
+    ///     assert!(const_val.value.im - 1.0 < 10e-10);
+    /// }
     /// ```
-    pub fn get_constant_value(&self, s: & str) -> Option<f64> {
+    pub fn get_constant_value(&self, s: & str) -> Option<MathResult> {
         self.constants.get(s).cloned()
     }
 
@@ -272,7 +302,7 @@ impl<'a> MathContext {
     /// ```
     pub fn get_operation_type(&self, s: &'a str) -> Option<OperationType> {
         match self.operations.get(s) {
-            Some(x) => Some(x.0),
+            Some(x) => Some(x.0.clone()),
             None => None
         }
     }
@@ -308,7 +338,7 @@ impl<'a> MathContext {
     /// ```
     pub fn get_function_type(&self, s: &'a str) -> Option<FunctionType> {
         match self.functions.get(s) {
-            Some(ref x) => Some(x.0),
+            Some(x) => Some(x.0.clone()),
             None => None
         }
     }
