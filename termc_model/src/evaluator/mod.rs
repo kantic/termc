@@ -3,10 +3,9 @@ extern crate num;
 
 use std::f64;
 use std::str::FromStr;
-use num::complex::Complex;
 use math_context::{MathContext, OperationType, FunctionType, NumberType};
 use parser::tokenizer::{Token, TokenType};
-use math_result::{MathResult, MathResultType};
+use math_result::MathResult;
 use tree::TreeNode;
 
 /// The evaluator.
@@ -61,43 +60,41 @@ impl<'a> Evaluator<'a> {
                     return None;
                 }
                 let left_val = left_val.unwrap();
-                let mut result_type = left_val.result_type.clone();
 
                 if subtree.successors.len() == 2 {
+                    // binary operation
                     let right_val = self.recursive_evaluate(subtree.successors[1].as_ref());
                     if right_val.is_none() {
                         return None;
                     }
                     let right_val = right_val.unwrap();
-                    if right_val.result_type == MathResultType::Complex {
-                        result_type = MathResultType::Complex;
-                    }
 
                     match op_type {
                         OperationType::Add => {
-                            Some(MathResult::new(result_type, left_val.value + right_val.value))
+                            Some(MathContext::operation_add(& left_val, & right_val))
                         },
                         OperationType::Sub => {
-                            Some(MathResult::new(result_type, left_val.value - right_val.value))
+                            Some(MathContext::operation_sub(& left_val, & right_val))
                         },
                         OperationType::Mul => {
-                            Some(MathResult::new(result_type, left_val.value * right_val.value))
+                            Some(MathContext::operation_mul(& left_val, & right_val))
                         },
                         OperationType::Div => {
-                            Some(MathResult::new(result_type, left_val.value / right_val.value))
+                            Some(MathContext::operation_div(& left_val, & right_val))
                         },
                         OperationType::Pow => {
-                            Some(calc_pow(& left_val, & right_val, result_type))
+                            Some(MathContext::operation_pow(& left_val, & right_val))
                         }
                     }
                 }
                 else {
+                    // unary operation
                     match op_type {
                         OperationType::Add => {
-                            Some(MathResult::new(result_type, 0.0 + left_val.value))
+                            Some(MathContext::operation_add(& MathResult::from(0.0), & left_val))
                         },
                         OperationType::Sub => {
-                            Some(MathResult::new(result_type, 0.0 - left_val.value))
+                            Some(MathContext::operation_sub(& MathResult::from(0.0), & left_val))
                         },
                         _ => None
                     }
@@ -118,14 +115,10 @@ impl<'a> Evaluator<'a> {
 
                 let f_type = f_type.unwrap();
 
-                let mut result_type = MathResultType::Real;
                 let mut args : Vec<MathResult> = Vec::new();
                 for s in subtree.successors.iter() {
                     match self.recursive_evaluate(s.as_ref()) {
                         Some(x) => {
-                            if x.result_type == MathResultType::Complex {
-                                result_type = MathResultType::Complex;
-                            }
                             args.push(x)
                         },
                         None => return None
@@ -134,62 +127,62 @@ impl<'a> Evaluator<'a> {
 
                 match f_type {
                     FunctionType::Cos => {
-                        Some(MathResult::new(result_type, args[0].value.cos()))
+                        Some(MathContext::function_cos(& args[0]))
                     },
                     FunctionType::Sin => {
-                        Some(MathResult::new(result_type, args[0].value.sin()))
+                        Some(MathContext::function_sin(& args[0]))
                     },
                     FunctionType::Tan => {
-                        Some(MathResult::new(result_type, args[0].value.tan()))
+                        Some(MathContext::function_tan(& args[0]))
                     },
                     FunctionType::Cot => {
-                        Some(MathResult::new(result_type, args[0].value.cos() / args[0].value.sin()))
+                        Some(MathContext::function_cot(& args[0]))
                     }
                     FunctionType::Exp => {
-                        Some(MathResult::new(result_type, args[0].value.exp()))
+                        Some(MathContext::function_exp(& args[0]))
                     },
                     FunctionType::Cosh => {
-                        Some(MathResult::new(result_type, args[0].value.cosh()))
+                        Some(MathContext::function_cosh(& args[0]))
                     },
                     FunctionType::Sinh => {
-                        Some(MathResult::new(result_type, args[0].value.sinh()))
+                        Some(MathContext::function_sinh(& args[0]))
                     },
                     FunctionType::Tanh => {
-                        Some(MathResult::new(result_type, args[0].value.tanh()))
+                        Some(MathContext::function_tanh(& args[0]))
+                    },
+                    FunctionType::ArcCosh => {
+                        Some(MathContext::function_arccosh(& args[0]))
+                    },
+                    FunctionType::ArcSinh => {
+                        Some(MathContext::function_arcsinh(& args[0]))
+                    },
+                    FunctionType::ArcTanh => {
+                        Some(MathContext::function_arctanh(& args[0]))
                     },
                     FunctionType::Sqrt => {
-                        Some(MathResult::new(result_type, args[0].value.sqrt()))
+                        Some(MathContext::function_sqrt(& args[0]))
                     },
                     FunctionType::Ln => {
-                        Some(MathResult::new(result_type, args[0].value.ln()))
+                        Some(MathContext::function_ln(& args[0]))
                     },
                     FunctionType::Pow => {
-                        Some(calc_pow(& args[0], & args[1], result_type))
+                        Some(MathContext::operation_pow(& args[0], & args[1]))
                     },
                     FunctionType::Root => {
-                        Some(calc_pow(& args[0], & MathResult::from(1.0 / args[1].value), result_type))
+                        Some(MathContext::operation_pow(& args[0], & MathResult::new(args[1].result_type.clone(),
+                                                                                     1.0 / args[1].value)))
                     },
                     FunctionType::ArcCos => {
-                        if result_type == MathResultType::Real {
-                            if !(args[0].value.re <= 1.0 && args[0].value.re >= -1.0) {
-                                result_type = MathResultType::Complex;
-                            }
-                        }
-                        Some(MathResult::new(result_type, args[0].value.acos()))
+                        Some(MathContext::function_arccos(& args[0]))
                     },
                     FunctionType::ArcSin => {
-                        if result_type == MathResultType::Real {
-                            if !(args[0].value.re <= 1.0 && args[0].value.re >= -1.0) {
-                                result_type = MathResultType::Complex;
-                            }
-                        }
-                        Some(MathResult::new(result_type, args[0].value.asin()))
+                        Some(MathContext::function_arcsin(& args[0]))
                     },
                     FunctionType::ArcTan => {
-                        Some(MathResult::new(result_type, args[0].value.atan()))
+                        Some(MathContext::function_arctan(& args[0]))
                     },
                     FunctionType::ArcCot => {
-                        Some(MathResult::new(result_type, f64::consts::PI / 2.0 - args[0].value.atan()))
+                        Some(MathContext::function_arccot(& args[0]))
                     }
                 }
             },
@@ -197,31 +190,6 @@ impl<'a> Evaluator<'a> {
             _ => {  // punctuation and unknown tokens should not occur in the evaluation method
                 None
             }
-        }
-    }
-}
-
-/// Computes the pow of two MathResult instances.
-fn calc_pow(left_val: & MathResult, right_val: & MathResult, result_type: MathResultType) -> MathResult {
-    match left_val.result_type {
-        MathResultType::Real => {
-            match right_val.result_type {
-                MathResultType::Real => {
-                    // ordinary pow, e.g. "a^b"
-                    MathResult::new(result_type, Complex::from(left_val.value.re.powf(right_val.value.re)))
-                },
-
-                MathResultType::Complex => {
-                    // exponent is complex, e.g. "a^(b+ci)" = "exp(ln(a) * (b+ci))"
-                    MathResult::new(result_type, (right_val.value * left_val.value.re.ln()).exp())
-                }
-            }
-        },
-
-        MathResultType::Complex =>  {
-            // base is complex, e.g. "(a+bi)^c" = "exp(ln(a+bi) * c)" or
-            // base and exponent are complex, e.g. "(a+bi)^(c+di)" = "exp(ln(a+bi) * (c+di))"
-            MathResult::new(result_type, (left_val.value.ln() * right_val.value).exp())
         }
     }
 }

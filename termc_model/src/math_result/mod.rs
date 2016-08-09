@@ -50,6 +50,20 @@ impl<'a> From<&'a Complex<f64>> for MathResult {
     }
 }
 
+impl From<(f64, f64)> for MathResult {
+    /// Converts a tuple of two floats into a MathResult (complex type).
+    fn from(tpl: (f64, f64)) -> Self {
+        MathResult {result_type: MathResultType::Complex, value: Complex::new(tpl.0, tpl.1)}
+    }
+}
+
+impl<'a> From<&'a (f64, f64)> for MathResult {
+    /// Converts a tuple reference of two floats into a MathResult (complex type).
+    fn from(tpl: &'a (f64, f64)) -> Self {
+        MathResult {result_type: MathResultType::Complex, value: Complex::new(tpl.0, tpl.1)}
+    }
+}
+
 impl From<f64> for MathResult {
     /// Converts a real number into a MathResult.
     fn from(real: f64) -> Self {

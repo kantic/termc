@@ -10,7 +10,7 @@ use super::ENTER_KEY;
 use super::TerminalUI;
 use self::termion::event::Key;
 use self::termion::input::TermRead;
-use self::termion::raw::{IntoRawMode};
+use self::termion::raw::IntoRawMode;
 use self::termion::terminal_size;
 
 static WRT_ERR_MSG : &'static str = "Failed to write on terminal!";
