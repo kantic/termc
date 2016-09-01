@@ -4,14 +4,10 @@ extern crate num;
 use std::f64;
 use std::collections::{HashMap, HashSet};
 use num::complex::Complex;
-use math_result::{MathResult, MathResultType};
-
-/// Defines the sets of numbers.
-#[derive(Clone, PartialEq, Debug)]
-pub enum NumberType {
-    Real,
-    Complex
-}
+use token::Token;
+use token::NumberType;
+use math_result::MathResult;
+use tree::TreeNode;
 
 /// Defines the types of supported operations.
 #[derive(Clone, PartialEq)]
@@ -21,6 +17,7 @@ pub enum OperationType {
     Mul,
     Div,
     Pow,
+    Assign
 }
 
 /// Defines the types of supported built-in functions.
@@ -44,7 +41,8 @@ pub enum FunctionType {
     ArcCot,
     ArcCosh,
     ArcSinh,
-    ArcTanh
+    ArcTanh,
+    UserFunction
 }
 
 /// Defines the mathematical context.
@@ -57,8 +55,12 @@ pub struct MathContext {
     literals : HashSet<char>,
     /// Set of functions (function type and number of arguments).
     functions: HashMap<String, (FunctionType, u32)>,
-    /// Map of supported constants (constant representation and value).
+    /// Set of user defined functions (the function expression tree and it's variables).
+    user_functions: HashMap<String, (TreeNode<Token>, Vec<String>, FunctionType)>,
+    /// Map of built-in constants (constant representation and value).
     constants : HashMap<String, MathResult>,
+    /// Map of user defined constants (constant representation and value).
+    user_constants: HashMap<String, MathResult>,
     /// Set of punctuation symbols.
     punctuation : HashSet<char>
 }
@@ -87,11 +89,12 @@ impl<'a> MathContext {
 
         // define the operation types associated with their string representation
         let mut operations: HashMap<String, (OperationType, u32)> = HashMap::new();
-        operations.insert(String::from("+"), (OperationType::Add, 1));
-        operations.insert(String::from("-"), (OperationType::Sub, 1));
-        operations.insert(String::from("*"), (OperationType::Mul, 2));
-        operations.insert(String::from("/"), (OperationType::Div, 2));
-        operations.insert(String::from("^"), (OperationType::Pow, 3));
+        operations.insert(String::from("="), (OperationType::Assign, 1));
+        operations.insert(String::from("+"), (OperationType::Add, 2));
+        operations.insert(String::from("-"), (OperationType::Sub, 2));
+        operations.insert(String::from("*"), (OperationType::Mul, 3));
+        operations.insert(String::from("/"), (OperationType::Div, 3));
+        operations.insert(String::from("^"), (OperationType::Pow, 4));
 
         // defines functions types with associated with their string representation
         let mut functions: HashMap<String, (FunctionType, u32)> = HashMap::new();
@@ -139,7 +142,8 @@ impl<'a> MathContext {
 
         MathContext {
             operations: operations, number_symbols: number_symbols, literals: literals,
-            functions: functions, constants: constants, punctuation: punctuation
+            functions: functions, user_functions: HashMap::new(), constants: constants,
+            user_constants: HashMap::new(), punctuation: punctuation
         }
     }
 
@@ -198,8 +202,16 @@ impl<'a> MathContext {
     /// let is_func = context.is_function("cos");
     /// assert!(is_func == true);
     /// ```
-    pub fn is_function(&self, s: &'a str) -> bool {
+    pub fn is_function(& self, s: &'a str) -> bool {
+        self.functions.contains_key(s) || self.user_constants.contains_key(s)
+    }
+
+    pub fn is_built_in_function(& self, s: &'a str) -> bool {
         self.functions.contains_key(s)
+    }
+
+    pub fn is_user_function(& self, s: &'a str) -> bool {
+        self.user_functions.contains_key(s)
     }
 
     /// Checks whether the specified character is a number symbol.
@@ -213,7 +225,7 @@ impl<'a> MathContext {
     /// let is_num = context.is_number_symbol(& '3');
     /// assert!(is_num == true);
     /// ```
-    pub fn is_number_symbol(&self, c: & char) -> bool {
+    pub fn is_number_symbol(& self, c: & char) -> bool {
         self.number_symbols.contains(c)
     }
 
@@ -228,7 +240,7 @@ impl<'a> MathContext {
     /// let is_literal = context.is_literal_symbol(& 'f');
     /// assert!(is_literal == true);
     /// ```
-    pub fn is_literal_symbol(&self, c: & char) -> bool {
+    pub fn is_literal_symbol(& self, c: & char) -> bool {
         self.literals.contains(c)
     }
 
@@ -243,8 +255,16 @@ impl<'a> MathContext {
     /// let is_constant = context.is_constant("pi");
     /// assert!(is_constant == true);
     /// ```
-    pub fn is_constant(&self, s: &'a str) -> bool {
+    pub fn is_constant(& self, s: &'a str) -> bool {
+        self.constants.contains_key(s) || self.user_constants.contains_key(s)
+    }
+
+    pub fn is_built_in_constant(& self, s:&'a str) -> bool {
         self.constants.contains_key(s)
+    }
+
+    pub fn is_user_constant(& self, s:&'a str) -> bool {
+        self.user_constants.contains_key(s)
     }
 
     /// Checks whether the specified character is a punctuation symbol.
@@ -272,7 +292,8 @@ impl<'a> MathContext {
     ///
     /// use num::complex::Complex;
     /// use termc_model::math_context::MathContext;
-    /// use termc_model::math_result::MathResultType;
+    /// use termc_model::math_result::MathResult;
+    /// use termc_model::token::NumberType;
     /// use std::f64;
     ///
     /// fn main() {
@@ -281,25 +302,30 @@ impl<'a> MathContext {
     ///     let const_val = context.get_constant_value("pi");
     ///     assert!(const_val.is_some());
     ///     let const_val = const_val.unwrap();
-    ///     assert!(const_val.result_type == MathResultType::Real);
+    ///     assert!(const_val.result_type == NumberType::Real);
     ///     assert!(const_val.value.re - f64::consts::PI < 10e-10);
     ///
     ///     let const_val = context.get_constant_value("e");
     ///     assert!(const_val.is_some());
     ///     let const_val = const_val.unwrap();
-    ///     assert!(const_val.result_type == MathResultType::Real);
+    ///     assert!(const_val.result_type == NumberType::Real);
     ///     assert!(const_val.value.re - f64::consts::E < 10e-10);
     ///
     ///     let const_val = context.get_constant_value("i");
     ///     assert!(const_val.is_some());
     ///     let const_val = const_val.unwrap();
-    ///     assert!(const_val.result_type == MathResultType::Complex);
+    ///     assert!(const_val.result_type == NumberType::Complex);
     ///     assert!(const_val.value.re < 10e-10);
     ///     assert!(const_val.value.im - 1.0 < 10e-10);
     /// }
     /// ```
     pub fn get_constant_value(&self, s: & str) -> Option<MathResult> {
-        self.constants.get(s).cloned()
+        match self.constants.get(s) {
+            Some(x) => Some(x.clone()),
+            None => {
+                self.user_constants.get(s).cloned()
+            }
+        }
     }
 
     /// Gets the operation type of the specified operation string.
@@ -329,9 +355,9 @@ impl<'a> MathContext {
     ///
     /// let context = MathContext::new();
     /// let op_prec = context.get_operation_precedence("+");
-    /// assert!(op_prec == Some(1 as u32));
+    /// assert!(op_prec == Some(2 as u32));
     /// ```
-    pub fn get_operation_precedence(&self, s: &'a str) -> Option<u32> {
+    pub fn get_operation_precedence(& self, s: &'a str) -> Option<u32> {
         match self.operations.get(s) {
             Some(x) => Some(x.1),
             None => None
@@ -349,10 +375,15 @@ impl<'a> MathContext {
     /// let func_type = context.get_function_type("cosh");
     /// assert!(func_type == Some(FunctionType::Cosh));
     /// ```
-    pub fn get_function_type(&self, s: &'a str) -> Option<FunctionType> {
+    pub fn get_function_type(& self, s: &'a str) -> Option<FunctionType> {
         match self.functions.get(s) {
             Some(x) => Some(x.0.clone()),
-            None => None
+            None => {
+                match self.user_functions.get(s) {
+                    Some(x) => Some(x.2.clone()),
+                    None => None
+                }
+            }
         }
     }
 
@@ -367,10 +398,15 @@ impl<'a> MathContext {
     /// let n_args = context.get_function_arg_num("pow");
     /// assert!(n_args == Some(2));
     /// ```
-    pub fn get_function_arg_num(&self, s: &'a str) -> Option<u32> {
+    pub fn get_function_arg_num(& self, s: &'a str) -> Option<u32> {
         match self.functions.get(s) {
             Some(ref x) => Some(x.1),
-            None => None
+            None => {
+                match self.user_functions.get(s) {
+                    Some(ref x) => Some(x.1.len() as u32),
+                    None => None
+                }
+            }
         }
     }
 
@@ -382,9 +418,9 @@ impl<'a> MathContext {
     /// use termc_model::math_context::MathContext;
     /// use termc_model::math_result::MathResult;
     ///
-    /// let lhs = MathResult::from(5.0);
-    /// let rhs = MathResult::from(4.0);
-    /// assert!(MathContext::operation_add(& lhs, & rhs).value.re - 9.0 < 10e-10);
+    /// let lhs = MathResult::from(5.0_f64);
+    /// let rhs = MathResult::from(4.0_f64);
+    /// assert!(MathContext::operation_add(& lhs, & rhs).value.re - 9.0_f64 < 10e-10_f64);
     /// ```
     pub fn operation_add(lhs: & MathResult, rhs: & MathResult) -> MathResult {
         let t = MathContext::get_result_type(& vec![lhs, rhs]);
@@ -399,9 +435,9 @@ impl<'a> MathContext {
     /// use termc_model::math_context::MathContext;
     /// use termc_model::math_result::MathResult;
     ///
-    /// let lhs = MathResult::from(5.0);
-    /// let rhs = MathResult::from(4.0);
-    /// assert!(MathContext::operation_sub(& lhs, & rhs).value.re - 1.0 < 10e-10);
+    /// let lhs = MathResult::from(5.0_f64);
+    /// let rhs = MathResult::from(4.0_f64);
+    /// assert!(MathContext::operation_sub(& lhs, & rhs).value.re - 1.0_f64 < 10e-10_f64);
     /// ```
     pub fn operation_sub(lhs: & MathResult, rhs: & MathResult) -> MathResult {
         let t = MathContext::get_result_type(& vec![lhs, rhs]);
@@ -416,9 +452,9 @@ impl<'a> MathContext {
     /// use termc_model::math_context::MathContext;
     /// use termc_model::math_result::MathResult;
     ///
-    /// let lhs = MathResult::from(5.0);
-    /// let rhs = MathResult::from(4.0);
-    /// assert!(MathContext::operation_mul(& lhs, & rhs).value.re - 20.0 < 10e-10);
+    /// let lhs = MathResult::from(5.0_f64);
+    /// let rhs = MathResult::from(4.0_f64);
+    /// assert!(MathContext::operation_mul(& lhs, & rhs).value.re - 20.0_f64 < 10e-10_f64);
     /// ```
     pub fn operation_mul(lhs: & MathResult, rhs: & MathResult) -> MathResult {
         let t = MathContext::get_result_type(& vec![lhs, rhs]);
@@ -433,9 +469,9 @@ impl<'a> MathContext {
     /// use termc_model::math_context::MathContext;
     /// use termc_model::math_result::MathResult;
     ///
-    /// let lhs = MathResult::from(5.0);
-    /// let rhs = MathResult::from(4.0);
-    /// assert!(MathContext::operation_div(& lhs, & rhs).value.re - 5.0/4.0 < 10e-10);
+    /// let lhs = MathResult::from(5.0_f64);
+    /// let rhs = MathResult::from(4.0_f64);
+    /// assert!(MathContext::operation_div(& lhs, & rhs).value.re - 5.0_f64/4.0_f64 < 10e-10_f64);
     /// ```
     pub fn operation_div(lhs: & MathResult, rhs: & MathResult) -> MathResult {
         let t = MathContext::get_result_type(& vec![lhs, rhs]);
@@ -450,28 +486,28 @@ impl<'a> MathContext {
     /// use termc_model::math_context::MathContext;
     /// use termc_model::math_result::MathResult;
     ///
-    /// let lhs = MathResult::from(5.0);
-    /// let rhs = MathResult::from(4.0);
-    /// assert!(MathContext::operation_pow(& lhs, & rhs).value.re - 625.0 < 10e-10);
+    /// let lhs = MathResult::from(5.0_f64);
+    /// let rhs = MathResult::from(4.0_f64);
+    /// assert!(MathContext::operation_pow(& lhs, & rhs).value.re - 625.0_f64 < 10e-10_f64);
     /// ```
     pub fn operation_pow(lhs: & MathResult, rhs: & MathResult) -> MathResult {
         let t = MathContext::get_result_type(& vec![lhs, rhs]);
         match lhs.result_type {
-            MathResultType::Real => {
+            NumberType::Real => {
                 match rhs.result_type {
-                    MathResultType::Real => {
+                    NumberType::Real => {
                         // ordinary pow, e.g. "a^b"
                         MathResult::new(t, Complex::from(lhs.value.re.powf(rhs.value.re)))
                     },
 
-                    MathResultType::Complex => {
+                    NumberType::Complex => {
                         // exponent is complex, e.g. "a^(b+ci)" = "exp(ln(a) * (b+ci))"
                         MathResult::new(t, (rhs.value * lhs.value.re.ln()).exp())
                     }
                 }
             },
 
-            MathResultType::Complex =>  {
+            NumberType::Complex =>  {
                 // base is complex, e.g. "(a+bi)^c" = "exp(ln(a+bi) * c)" or
                 // base and exponent are complex, e.g. "(a+bi)^(c+di)" = "exp(ln(a+bi) * (c+di))"
                 MathResult::new(t, (lhs.value.ln() * rhs.value).exp())
@@ -479,82 +515,273 @@ impl<'a> MathContext {
         }
     }
 
+    /// Implements the mathematical cosine function.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use termc_model::math_context::MathContext;
+    /// use termc_model::math_result::MathResult;
+    ///
+    /// let arg = MathResult::from(0.0_f64);
+    /// assert!(MathContext::function_cos(& arg).value.re - 1.0_f64 < 10e-10_f64);
+    /// ```
     pub fn function_cos(arg: & MathResult) -> MathResult {
         MathResult::new(arg.result_type.clone(), arg.value.cos())
     }
 
+    /// Implements the mathematical sine function.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use termc_model::math_context::MathContext;
+    /// use termc_model::math_result::MathResult;
+    /// use std::f64;
+    ///
+    /// let arg = MathResult::from(f64::consts::FRAC_PI_2);
+    /// assert!(MathContext::function_sin(& arg).value.re - 1.0_f64 < 10e-10_f64);
+    /// ```
     pub fn function_sin(arg: & MathResult) -> MathResult {
         MathResult::new(arg.result_type.clone(), arg.value.sin())
     }
 
+    /// Implements the mathematical tangent function.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use termc_model::math_context::MathContext;
+    /// use termc_model::math_result::MathResult;
+    /// use std::f64;
+    ///
+    /// let arg = MathResult::from(f64::consts::FRAC_PI_4);
+    /// assert!(MathContext::function_tan(& arg).value.re - 1.0_f64 < 10e-10_f64);
+    /// ```
     pub fn function_tan(arg: & MathResult) -> MathResult {
         MathResult::new(arg.result_type.clone(), arg.value.tan())
     }
 
+    /// Implements the mathematical cotangent function.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use termc_model::math_context::MathContext;
+    /// use termc_model::math_result::MathResult;
+    /// use std::f64;
+    ///
+    /// let arg = MathResult::from(f64::consts::FRAC_PI_4);
+    /// assert!(MathContext::function_cot(& arg).value.re - 1.0_f64 < 10e-10_f64);
+    /// ```
     pub fn function_cot(arg: & MathResult) -> MathResult {
         MathResult::new(arg.result_type.clone(), arg.value.cos() / arg.value.sin())
     }
 
+    /// Implements the mathematical inverse cosine function.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use termc_model::math_context::MathContext;
+    /// use termc_model::math_result::MathResult;
+    ///
+    /// let arg = MathResult::from(1.0_f64.cos());
+    /// assert!(MathContext::function_arccos(& arg).value.re - 1.0_f64 < 10e-10_f64);
+    /// ```
     pub fn function_arccos(arg: & MathResult) -> MathResult {
         let mut t = arg.result_type.clone();
-        if t == MathResultType::Real {
+        if t == NumberType::Real {
             if !(arg.value.re <= 1.0 && arg.value.re >= -1.0) {
-                t = MathResultType::Complex;
+                t = NumberType::Complex;
             }
         }
         MathResult::new(t, arg.value.acos())
     }
 
+    /// Implements the mathematical inverse sine function.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use termc_model::math_context::MathContext;
+    /// use termc_model::math_result::MathResult;
+    ///
+    /// let arg = MathResult::from(1.0_f64.sin());
+    /// assert!(MathContext::function_arcsin(& arg).value.re - 1.0_f64 < 10e-10_f64);
+    /// ```
     pub fn function_arcsin(arg: & MathResult) -> MathResult {
         let mut t = arg.result_type.clone();
-        if t == MathResultType::Real {
+        if t == NumberType::Real {
             if !(arg.value.re <= 1.0 && arg.value.re >= -1.0) {
-                t = MathResultType::Complex;
+                t = NumberType::Complex;
             }
         }
         MathResult::new(t, arg.value.asin())
     }
 
+    /// Implements the mathematical inverse tangent function.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use termc_model::math_context::MathContext;
+    /// use termc_model::math_result::MathResult;
+    ///
+    /// let arg = MathResult::from(1.0_f64.tan());
+    /// assert!(MathContext::function_arctan(& arg).value.re - 1.0_f64 < 10e-10_f64);
+    /// ```
     pub fn function_arctan(arg: & MathResult) -> MathResult {
         MathResult::new(arg.result_type.clone(), arg.value.atan())
     }
 
+    /// Implements the mathematical inverse cotangent function.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use termc_model::math_context::MathContext;
+    /// use termc_model::math_result::MathResult;
+    ///
+    /// let arg = MathResult::from(1.0_f64.cos() / 1.0_f64.sin());
+    /// assert!(MathContext::function_arccot(& arg).value.re - 1.0_f64 < 10e-10_f64);
+    /// ```
     pub fn function_arccot(arg: & MathResult) -> MathResult {
         MathResult::new(arg.result_type.clone(), f64::consts::FRAC_PI_2 - arg.value.atan())
     }
 
+    /// Implements the mathematical hyperbolic cosine function.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use termc_model::math_context::MathContext;
+    /// use termc_model::math_result::MathResult;
+    ///
+    /// let arg = MathResult::from(0.0_f64);
+    /// assert!(MathContext::function_cosh(& arg).value.re - 1.0_f64 < 10e-10_f64);
+    /// ```
     pub fn function_cosh(arg: & MathResult) -> MathResult {
         MathResult::new(arg.result_type.clone(), arg.value.cosh())
     }
 
+    /// Implements the mathematical hyperbolic sine function.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use termc_model::math_context::MathContext;
+    /// use termc_model::math_result::MathResult;
+    ///
+    /// let arg = MathResult::from(0.0_f64.tan());
+    /// assert!(MathContext::function_arctan(& arg).value.re - 0.0_f64 < 10e-10_f64);
+    /// ```
     pub fn function_sinh(arg: & MathResult) -> MathResult {
         MathResult::new(arg.result_type.clone(), arg.value.sinh())
     }
 
+    /// Implements the mathematical hyperbolic tangent function.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use termc_model::math_context::MathContext;
+    /// use termc_model::math_result::MathResult;
+    ///
+    /// let arg = MathResult::from(0.0_f64.tan());
+    /// assert!(MathContext::function_arctan(& arg).value.re - 0.0_f64 < 10e-10_f64);
+    /// ```
     pub fn function_tanh(arg: & MathResult) -> MathResult {
         MathResult::new(arg.result_type.clone(), arg.value.tanh())
     }
 
+    /// Implements the mathematical inverse hyperbolic cosine function.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use termc_model::math_context::MathContext;
+    /// use termc_model::math_result::MathResult;
+    ///
+    /// let arg = MathResult::from(1.0_f64.cosh());
+    /// assert!(MathContext::function_arccosh(& arg).value.re - 1.0_f64 < 10e-10_f64);
+    /// ```
     pub fn function_arccosh(arg: & MathResult) -> MathResult {
         MathResult::new(arg.result_type.clone(), arg.value.acosh())
     }
 
+    /// Implements the mathematical inverse hyperbolic sine function.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use termc_model::math_context::MathContext;
+    /// use termc_model::math_result::MathResult;
+    ///
+    /// let arg = MathResult::from(1.0_f64.sinh());
+    /// assert!(MathContext::function_arcsinh(& arg).value.re - 1.0_f64 < 10e-10_f64);
+    /// ```
     pub fn function_arcsinh(arg: & MathResult) -> MathResult {
         MathResult::new(arg.result_type.clone(), arg.value.asinh())
     }
 
+    /// Implements the mathematical inverse hyperbolic tangent function.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use termc_model::math_context::MathContext;
+    /// use termc_model::math_result::MathResult;
+    ///
+    /// let arg = MathResult::from(1.0_f64.tanh());
+    /// assert!(MathContext::function_arctanh(& arg).value.re - 1.0_f64 < 10e-10_f64);
+    /// ```
     pub fn function_arctanh(arg: & MathResult) -> MathResult {
         MathResult::new(arg.result_type.clone(), arg.value.atanh())
     }
 
+    /// Implements the mathematical exponential function.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use termc_model::math_context::MathContext;
+    /// use termc_model::math_result::MathResult;
+    /// use std::f64;
+    ///
+    /// let arg = MathResult::from(2.0_f64);
+    /// assert!(MathContext::function_exp(& arg).value.re - f64::consts::E * f64::consts::E < 10e-10_f64);
+    /// ```
     pub fn function_exp(arg: & MathResult) -> MathResult {
         MathResult::new(arg.result_type.clone(), arg.value.exp())
     }
 
+    /// Implements the mathematical inverse hyperbolic sine function.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use termc_model::math_context::MathContext;
+    /// use termc_model::math_result::MathResult;
+    ///
+    /// let arg = MathResult::from(5.0_f64.exp());
+    /// assert!(MathContext::function_ln(& arg).value.re - 5.0_f64 < 10e-10_f64);
+    /// ```
     pub fn function_ln(arg: & MathResult) -> MathResult {
         MathResult::new(arg.result_type.clone(), arg.value.ln())
     }
 
+    /// Implements the mathematical inverse hyperbolic sine function.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use termc_model::math_context::MathContext;
+    /// use termc_model::math_result::MathResult;
+    ///
+    /// let arg = MathResult::from(25.0_f64);
+    /// assert!(MathContext::function_sqrt(& arg).value.re - 5.0_f64 < 10e-10_f64);
+    /// ```
     pub fn function_sqrt(arg: & MathResult) -> MathResult {
         MathResult::new(arg.result_type.clone(), arg.value.sqrt())
     }
@@ -562,13 +789,17 @@ impl<'a> MathContext {
     /// Returns the result type for a mathematical expression with the given operands.
     /// The result type is complex, if any of the specified operands is complex.
     /// Otherwise, the result type is real.
-    fn get_result_type(args: &Vec<& MathResult>) -> MathResultType {
+    fn get_result_type(args: & Vec<& MathResult>) -> NumberType {
         for arg in args {
-            if arg.result_type == MathResultType::Complex {
-                return MathResultType::Complex;
+            if arg.result_type == NumberType::Complex {
+                return NumberType::Complex;
             }
         }
 
-        MathResultType::Real
+        NumberType::Real
+    }
+
+    pub fn add_user_constant(&mut self, repr: &str, value: MathResult) {
+        self.user_constants.insert(String::from(repr), value);
     }
 }

@@ -41,7 +41,9 @@ impl TerminalHandle {
         let mut s = String::new();
         let mut first_line = true;
         for c in input.chars() {
-            if c == '\n' || (first_line && (s.len() as u16) + self.x - 1 == term_size.0) || (!first_line && (s.len() as u16) == term_size.0) {
+            if c == '\n' || (first_line && (s.len() as u16) + self.x - 1 == term_size.0)
+                || (!first_line && (s.len() as u16) == term_size.0) {
+
                 lines.push(s);
                 s = String::new();
                 first_line = false;
@@ -267,6 +269,25 @@ impl TerminalHandle {
     fn write_prompt(& mut self, flush: bool) {
         self.write_string(PROMPT, flush);
     }
+
+    /// Manages the cursor position update after printing a result or an error.
+    fn print_postprocessing(& mut self) {
+
+        let term_size = terminal_size().expect(TERM_ERR_MSG);
+        self.x = 1;
+        self.y += 1;
+        if self.y > term_size.1 {
+            self.y = term_size.1;
+            self.input_base_line -= 1;
+        }
+        self.y += 1;
+        if self.y > term_size.1 {
+            self.y = term_size.1;
+            self.input_base_line -= 1;
+        }
+        let (x, y) = (self.x, self.y);
+        self.control_terminal(& format!("\n\n{}", termion::cursor::Goto(x, y)), true);
+    }
 }
 
 impl TerminalUI for TerminalHandle {
@@ -426,41 +447,13 @@ impl TerminalUI for TerminalHandle {
     /// Prints the specified result on the terminal.
     fn print_result(& mut self, result: &str) {
         self.write_string(& format!("{}{}", ANS_PREFIX, result), true);
-
-        let term_size = terminal_size().expect(TERM_ERR_MSG);
-        self.x = 1;
-        self.y += 1;
-        if self.y > term_size.1 {
-            self.y = term_size.1;
-            self.input_base_line -= 1;
-        }
-        self.y += 1;
-        if self.y > term_size.1 {
-            self.y = term_size.1;
-            self.input_base_line -= 1;
-        }
-        let (x, y) = (self.x, self.y);
-        self.control_terminal(& format!("\n\n{}", termion::cursor::Goto(x, y)), true);
+        self.print_postprocessing();
 
     }
 
     /// Prints the specified error on the terminal.
     fn print_error<T: Error>(& mut self, err: T) {
         self.write_string(& format!("{}", err), true);
-
-        let term_size = terminal_size().expect(TERM_ERR_MSG);
-        self.x = 1;
-        self.y += 1;
-        if self.y > term_size.1 {
-            self.y = term_size.1;
-            self.input_base_line -= 1;
-        }
-        self.y += 1;
-        if self.y > term_size.1 {
-            self.y = term_size.1;
-            self.input_base_line -= 1;
-        }
-        let (x, y) = (self.x, self.y);
-        self.control_terminal(& format!("\n\n{}", termion::cursor::Goto(x, y)), true);
+        self.print_postprocessing();
     }
 }

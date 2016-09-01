@@ -32,11 +32,16 @@ fn get_arguments() -> Vec<String> {
 /// Prints a ';'-separated list with the results of the specified mathematical expressions.
 fn start_call(args: & Vec<String>) {
     let mut results : Vec<String> = Vec::new();
-    let context = MathContext::new();
+    let mut context = MathContext::new();
 
     for (i, arg) in args.iter().enumerate() {
-        match get_result(arg.trim(), & context) {
-            Ok(result) => results.push(result.to_string()),
+        match get_result(arg.trim(), & mut context) {
+            Ok(result) => {
+                match result {
+                    Some(y) => results.push(y.to_string()),
+                    None => ()
+                }
+            },
             Err(err) => {
                 println!("In input {}\n: {}", i+1, err);
                 break;
@@ -52,7 +57,7 @@ fn start_interactive() {
 
     let mut terminal = create_terminal_handle();
     terminal.init();
-    let context = MathContext::new();
+    let mut context = MathContext::new();
 
     loop {
         let user_input = terminal.get_user_input();
@@ -65,9 +70,12 @@ fn start_interactive() {
             break;
         }
         else {
-            match get_result(& user_input, & context) {
+            match get_result(& user_input, & mut context) {
                 Ok(result) => {
-                    terminal.print_result(& format!("{}", result));
+                    match result {
+                        Some(y) => terminal.print_result(& format!("{}", y)),
+                        None => ()
+                    }
                 },
                 Err(err) => {
                     terminal.print_error(err);
