@@ -8,7 +8,6 @@ mod tree;
 mod parser;
 mod evaluator;
 mod error_templates;
-//Todo: input "-" crashes
 
 #[cfg(test)]
 mod test;

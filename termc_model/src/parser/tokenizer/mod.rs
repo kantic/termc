@@ -4,6 +4,7 @@ pub mod input_stream;
 
 use std::fmt;
 use std::error::Error;
+use error_templates::create_location_string;
 use token::{Token, TokenType, SymbolicTokenType, NumberType};
 use parser::tokenizer::input_stream::InputStream;
 use parser::tokenizer::input_stream::StreamEndError;
@@ -33,7 +34,7 @@ impl fmt::Display for TokenError {
     /// Returns the formatted error message.
     fn fmt(& self, f: & mut fmt::Formatter) -> fmt::Result {
         match *self {
-            TokenError::StreamEndError(_) => write!(f, "Error: End of token input stream reached!."),
+            TokenError::StreamEndError(_) => write!(f, "Error: Unexpected end of input reached."),
             TokenError::UnknownTokenError(ref s, ref l) => write!(f, "Error: Unknown token found: \"{}\".\n{}", s, l)
         }
     }
@@ -101,12 +102,6 @@ impl<'a> Tokenizer<'a> {
         }
     }
 
-    /// Returns an error string marking the specified position in the input string of the input stream
-    /// and appends the specified message.
-    pub fn get_err_string(& self, pos: u32, msg: & str) -> String {
-        self.input_stream.get_err_string(pos, msg)
-    }
-
     pub fn get_input(& self) -> & str {
         self.input_stream.get_input()
     }
@@ -145,7 +140,8 @@ impl<'a> Tokenizer<'a> {
         }
         else {
             // this case is executed e.g. if an input character is unusual, e.g. "§"
-            return Err(TokenError::UnknownTokenError(peeked_char.to_string(), self.get_err_string(self.get_pos() + 1, "")));
+            return Err(TokenError::UnknownTokenError(peeked_char.to_string(), create_location_string(
+                self.input_stream.get_input(), self.input_stream.get_pos())));
         }
     }
 
@@ -223,16 +219,16 @@ impl<'a> Tokenizer<'a> {
             }
         }
         if self.context.is_built_in_constant(& value) && !next_is_paren {
-            token = Token::new(TokenType::Constant, value, self.input_stream.get_pos());
+            token = Token::new(TokenType::Constant, value, self.get_pos());
         }
         else if self.context.is_user_constant(& value) && !next_is_paren {
-            token = Token::new(TokenType::UserConstant, value, self.input_stream.get_pos());
+            token = Token::new(TokenType::UserConstant, value, self.get_pos());
         }
         else if self.context.is_built_in_function(& value) && next_is_paren {
-            token = Token::new(TokenType::Function, value, self.input_stream.get_pos());
+            token = Token::new(TokenType::Function, value, self.get_pos());
         }
         else if self.context.is_user_function(& value) && next_is_paren {
-            token = Token::new(TokenType::UserFunction, value, self.input_stream.get_pos());
+            token = Token::new(TokenType::UserFunction, value, self.get_pos());
         }
         else if next_is_paren {
             // unknown function
@@ -243,7 +239,7 @@ impl<'a> Tokenizer<'a> {
             // an unknown function is a function that is neither a built in nor a user defined
             // function; it may be the left hand side of an assignment
             token = Token::new(TokenType::Symbol(SymbolicTokenType::UnknownFunction), value,
-                               self.input_stream.get_pos());
+                               self.get_pos());
         }
         else {
             // !next_is_paren => it must be an unknown constant
@@ -254,7 +250,7 @@ impl<'a> Tokenizer<'a> {
             // an unknown constant is a constant that is neither a built in nor a user defined
             // constant; it may be the left hand side of an assignment
             token = Token::new(TokenType::Symbol(SymbolicTokenType::UnknownConstant), value,
-                               self.input_stream.get_pos());
+                               self.get_pos());
         }
 
         Ok(token)

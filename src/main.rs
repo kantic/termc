@@ -74,7 +74,7 @@ fn start_interactive() {
                 Ok(result) => {
                     match result {
                         Some(y) => terminal.print_result(& format!("{}", y)),
-                        None => ()
+                        None => terminal.print_str("\n\n")
                     }
                 },
                 Err(err) => {
@@ -86,3 +86,5 @@ fn start_interactive() {
 
     terminal.end();
 }
+
+// Todo: Correct multi-line error output

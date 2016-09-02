@@ -37,6 +37,8 @@ pub trait TerminalUI {
     fn print_result(& mut self, result: &str);
     /// Prints the specified error on the terminal.
     fn print_error<T: Error>(& mut self, err: T);
+    /// Prints the specified string.
+    fn print_str(& mut self, s: &str);
 }
 
 /// Creates a new terminal handle that implements the TerminalUI trait.

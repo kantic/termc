@@ -163,16 +163,10 @@ impl<'a> Parser<'a> {
                 TokenType::Number(_) | TokenType::Constant | TokenType::UserConstant | TokenType::Symbol(SymbolicTokenType::UnknownConstant) => {
                     Ok(TreeNode::new(t))
                 },
-                TokenType::Function | TokenType::UserFunction => {
+                TokenType::Function | TokenType::UserFunction | TokenType::Symbol(SymbolicTokenType::UnknownFunction) => {
                     // return the complete parsed function call subtree
                     self.parse_function(t)
                 },
-                TokenType::Symbol(s) => {
-                    match s {
-                        SymbolicTokenType::UnknownConstant => Ok(TreeNode::new(t)),
-                        SymbolicTokenType::UnknownFunction => self.parse_function(t)
-                    }
-                }
                 TokenType::Operation => {
                     // Return the unprocessed unary operation symbol.
                     // This case is relevant as an unary operation can appear instead of an operand
@@ -188,7 +182,7 @@ impl<'a> Parser<'a> {
                 },
                 _ => {
                     Err(ParseError::from(ExpectedErrorTemplate::new(self.tokenizer.get_input(), "operand (number, constant, function call) or an unary operation",
-                                                                    Some(format!("unexpected symbol \"{}\".", t)), t.get_end_pos())))
+                                                                    Some(format!("unexpected symbol \"{}\"", t)), t.get_end_pos())))
                 }
             }
         }
@@ -209,7 +203,7 @@ impl<'a> Parser<'a> {
         try!(self.skip_punc(")"));
 
         let n_args = self.context.get_function_arg_num(t.get_value()).unwrap_or(0);
-        if (args.len() as u32) != n_args {
+        if (args.len() as u32) != n_args && t.get_type() != TokenType::Symbol(SymbolicTokenType::UnknownFunction) {
             return Err(ParseError::from(ExpectedErrorTemplate::new(self.tokenizer.get_input(),
                                                                    format!("{} argument(s)", n_args), None, pos)));
         }

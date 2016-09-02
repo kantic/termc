@@ -13,12 +13,12 @@ use token::{Token, TokenType, SymbolicTokenType, NumberType};
 use math_result::MathResult;
 use tree::TreeNode;
 
+// Todo: ans variable should be set for each numerical result
+
 #[derive(Clone, Debug)]
 pub enum EvaluationError {
     ExpectedError(ExpectedErrorTemplate),
-    //InputError(ParseError),
-    NumberError(ParseFloatError),
-    //AlreadyExistsError(String, String)
+    NumberError(ParseFloatError)
 }
 
 impl fmt::Display for EvaluationError {
@@ -27,23 +27,10 @@ impl fmt::Display for EvaluationError {
     fn fmt(& self, f: & mut fmt::Formatter) -> fmt::Result {
         match *self {
             EvaluationError::ExpectedError(ref tmpl) => write!(f, "{}", tmpl),
-            //EvaluationError::InputError(ref e) => write!(f, "{}", e),
-            EvaluationError::NumberError(ref e) => write!(f, "{}", e)//,
-            //EvaluationError::AlreadyExistsError(ref what, ref ex) => write!(f, "{} already exists: {}")
+            EvaluationError::NumberError(ref e) => write!(f, "{}", e)
         }
     }
 }
-
-/*impl From<ParseError> for EvaluationError {
-
-    /// Converts a TokenError into a ParseError.
-    fn from(err: ParseError) -> EvaluationError {
-        match err {
-            ParseError::ExpectedError(ref symbol, ref location_msg) => EvaluationError::ExpectedError(symbol.clone(), location_msg.clone()),
-            ParseError::InputError(ref e) => EvaluationError::InputError(ParseError::InputError(e.clone()))
-        }
-    }
-}*/
 
 impl From<ExpectedErrorTemplate> for EvaluationError {
 
@@ -67,7 +54,6 @@ impl Error for EvaluationError {
         match *self {
             EvaluationError::ExpectedError(_) => "Expected a symbol.",
             EvaluationError::NumberError(_) => "A number could not be parsed."
-            //EvaluationError::InputError(ref err) => err.description()
         }
     }
 
@@ -76,7 +62,6 @@ impl Error for EvaluationError {
         match *self {
             EvaluationError::ExpectedError(_) => None,
             EvaluationError::NumberError(ref err) => Some(err)
-            //EvaluationError::InputError(ref err) => Some(err)
         }
     }
 }
@@ -130,7 +115,18 @@ impl<'a> Evaluator<'a> {
         let result = try!(self.recursive_evaluate(tree, input));
         match result {
             EvaluationResult::Numerical(x) => Ok(Some(x)),
-            EvaluationResult::Symbolical(_) => Ok(None)
+            EvaluationResult::Symbolical(sym) => {
+                match sym.content.get_type() {
+                    TokenType::Operation => {
+                        Ok(None)
+                    },
+
+                    _ => {
+                        Err(EvaluationError::from(ExpectedErrorTemplate::new(
+                            input, "function or operation", Some(format!("{}", sym.content)), sym.content.get_end_pos())))
+                    }
+                }
+            }
         }
     }
 
@@ -155,14 +151,18 @@ impl<'a> Evaluator<'a> {
                 Ok(EvaluationResult::from(c_val))
             },
 
-            // Todo: TokenType::UserConstant and TokenType::UserFunction and support user constants and user functions at math_context
+            // Todo: support user functions at math_context
 
             TokenType::Operation => {
                 let op_type = self.context.get_operation_type(subtree.content.get_value().as_ref());
                 let op_type = op_type.unwrap(); // the parser ensures that this is a valid operation type
 
+                if !(subtree.successors.len() > 0) {
+                    // this operation has no operands => error
+                    return Err(EvaluationError::from(ExpectedErrorTemplate::new(
+                        input, "operands", Some(format!("operation \"{}\" without any operands", subtree.content)), subtree.content.get_end_pos())))
+                }
                 let left_val = try!(self.recursive_evaluate(subtree.successors[0].as_ref(), input));
-
                 if subtree.successors.len() == 2 {  // binary operation
                     let right_val = try!(self.recursive_evaluate(subtree.successors[1].as_ref(), input));
                     // let right_val = try!(right_val.ok_or(EvaluationError::from(ExpectedErrorTemplate::new(input, "non-symbolic expression"))));
@@ -216,7 +216,7 @@ impl<'a> Evaluator<'a> {
                                 _ => {
                                     // error: left hand side of an assignment must be a symbolical type
                                     Err(EvaluationError::from(ExpectedErrorTemplate::new(input, "new or user defined constant or function",
-                                                                                         Some(format!("expression {}", left_val_sym.content)),
+                                                                                         Some(format!("expression \"{}\"", left_val_sym.content)),
                                                                                          left_val_sym.content.get_end_pos())))
                                 }
                             }
@@ -234,7 +234,7 @@ impl<'a> Evaluator<'a> {
                             Ok(EvaluationResult::from(MathContext::operation_sub(& MathResult::from(0.0), & left_val_num)))
                         },
                         _ => Err(EvaluationError::from(ExpectedErrorTemplate::new(input, "unary operation",
-                                                                                  Some(format!("non-unary operation {}", subtree.content)),
+                                                                                  Some(format!("non-unary operation \"{}\"", subtree.content)),
                                                                                   subtree.content.get_end_pos())))
                     }
                 }
@@ -345,7 +345,7 @@ impl<'a> Evaluator<'a> {
         match res {
             EvaluationResult::Numerical(x) => Ok(x),
             EvaluationResult::Symbolical(n) => Err(EvaluationError::from(
-                ExpectedErrorTemplate::new(input, "non-symbolic expression", Some(format!("symbolic expression {}", n.content.get_value())),
+                ExpectedErrorTemplate::new(input, "non-symbolic expression", Some(format!("symbolic expression \"{}\"", n.content.get_value())),
                                            n.content.get_end_pos())))
         }
     }
@@ -354,7 +354,7 @@ impl<'a> Evaluator<'a> {
 
         match n.content.get_type() {
             TokenType::Constant | TokenType::Function => Err(EvaluationError::from(
-                ExpectedErrorTemplate::new(input, "new constant or function", Some(format!("built-in expression {}", n.content.get_value())), n.content.get_end_pos()))),
+                ExpectedErrorTemplate::new(input, "new constant or function", Some(format!("built-in expression \"{}\"", n.content.get_value())), n.content.get_end_pos()))),
             _ => Ok(n)
         }
     }

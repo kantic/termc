@@ -12,7 +12,7 @@ impl fmt::Display for StreamEndError {
 
     /// Returns the formatted error message.
     fn fmt(& self, f: & mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Error: End of character input stream reached!")
+        write!(f, "Error: Unexpected end of character input stream reached!")
     }
 }
 
@@ -79,19 +79,5 @@ impl<'a> InputStream<'a> {
 
     pub fn get_input(& self) -> & str {
         & self.input
-    }
-
-    /// Returns an error string marking the specified position in the input string and appends
-    /// the specified message.
-    pub fn get_err_string(& self, pos: u32, msg: & str) -> String {
-        let mut err_str = self.input.clone();
-        err_str.push('\n');
-        for _ in 0..pos {
-            err_str.push(' ');
-        }
-        err_str.push_str("^~~~ ");
-        err_str.push_str(msg);
-
-        err_str
     }
 }

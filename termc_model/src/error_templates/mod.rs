@@ -16,17 +16,6 @@ impl ExpectedErrorTemplate {
         ExpectedErrorTemplate {input: input.into(), expected: expected.into(),
             found: found, pos: pos}
     }
-
-    pub fn create_location_string<S>(input: S, pos: u32) -> String where S: Into<String> {
-        let mut res = input.into();
-        res.push('\n');
-        for _ in 0..pos {
-            res.push(' ');
-        }
-        res.push_str("^~~~");
-
-        res
-    }
 }
 
 impl fmt::Display for ExpectedErrorTemplate {
@@ -34,7 +23,7 @@ impl fmt::Display for ExpectedErrorTemplate {
     /// Returns the formatted error message.
     fn fmt(& self, f: & mut fmt::Formatter) -> fmt::Result {
 
-        let location_part = ExpectedErrorTemplate::create_location_string(self.input.clone(), self.pos);
+        let location_part = create_location_string(self.input.clone(), self.pos);
 
         let mut found_part = String::new();
         if self.found.is_some() {
@@ -42,6 +31,17 @@ impl fmt::Display for ExpectedErrorTemplate {
             found_part.push_str(self.found.as_ref().unwrap());
         }
 
-        write!(f, "Error: Expected {}\n{}{}", self.expected, location_part, found_part)
+        write!(f, "Error: Expected {}.\n{}{}", self.expected, location_part, found_part)
     }
+}
+
+pub fn create_location_string<S>(input: S, pos: u32) -> String where S: Into<String> {
+    let mut res = input.into();
+    res.push('\n');
+    for _ in 0..pos {
+        res.push(' ');
+    }
+    res.push_str("^~~~");
+
+    res
 }

@@ -483,62 +483,62 @@ fn tst_get_result() {
     // Error message tests
 
     // test missing ")"
-    /*
     let result = get_result("2*(5-3", & mut context);
     assert!(result.is_err());
     let msg = format!("{}", result.err().unwrap());
-    assert!(msg == "Error: Expected symbol \")\".\n2*(5-3\n      ^~~~ ");
-
-
+    assert!(msg == "Error: Expected symbol \")\".\n2*(5-3\n      ^~~~");
 
     // test unknown function
-    let result = get_result("3-cis(pi/2)+sin(0)", & context);
+    let result = get_result("3-cis(pi/2)+sin(0)", & mut context);
     assert!(result.is_err());
     let msg = format!("{}", result.err().unwrap());
-    assert!(msg == "Error: Unknown token found: \"cis(...)\".\n3-cis(pi/2)+sin(0)\n    ^~~~ ");
+    assert!(msg == "Error: Expected non-symbolic expression.\n3-cis(pi/2)+sin(0)\n    ^~~~ Found: symbolic expression \"cis\"");
 
     // test unknown constant
-    let result = get_result("5*3+cos(py)-7^1", & context);
+    let result = get_result("5*3+cos(py)-7^1", & mut context);
     assert!(result.is_err());
     let msg = format!("{}", result.err().unwrap());
-    assert!(msg == "Error: Unknown token found: \"py\".\n5*3+cos(py)-7^1\n         ^~~~ ");
-
+    assert!(msg == "Error: Expected non-symbolic expression.\n5*3+cos(py)-7^1\n         ^~~~ Found: symbolic expression \"py\"");
 
     // test expectation of unary operation
     let result = get_result("5+--*2.7", & mut context);
     assert!(result.is_err());
     let msg = format!("{}", result.err().unwrap());
-    assert!(msg == "Error: Expected unary operation.\n5+--*2.7\n    ^~~~ Found: non-unary operation \"*\".");
+    assert!(msg == "Error: Expected unary operation.\n5+--*2.7\n    ^~~~ Found: non-unary operation \"*\"");
+
 
     // test expectation of unary operation or operand
     let result = get_result("3-)", & mut context);
     assert!(result.is_err());
     let msg = format!("{}", result.err().unwrap());
-    assert!(msg == "Error: Expected operand (number, constant, function call) or an unary operation.\n3-)\n  ^~~~ Found: unexpected symbol \")\".");
+    assert!(msg == "Error: Expected operand (number, constant, function call) or an unary operation.\n3-)\n  ^~~~ Found: unexpected symbol \")\"");
+
 
     // test unexpected token
     let result = get_result("5+|", & mut context);
     assert!(result.is_err());
     let msg = format!("{}", result.err().unwrap());
     println!("Error-msg: {}", msg);
-    assert!(msg == "Error: Unknown token found: \"|\".\n5+|\n  ^~~~ ");
+    assert!(msg == "Error: Unknown token found: \"|\".\n5+|\n  ^~~~");
+
 
     // test expectation of ")" in argument list
     let result = get_result("pow(5,", & mut context);
     assert!(result.is_err());
     let msg = format!("{}", result.err().unwrap());
-    assert!(msg == "Error: Expected symbol \")\".\npow(5,\n      ^~~~ ");
+    assert!(msg == "Error: Expected symbol \")\".\npow(5,\n      ^~~~");
+
 
     // test argument number for functions
     let result = get_result("pow(5)", & mut context);
     assert!(result.is_err());
     let msg = format!("{}", result.err().unwrap());
-    assert!(msg == "Error: Expected 2 argument(s).\npow(5)\n     ^~~~ ");
+    assert!(msg == "Error: Expected 2 argument(s).\npow(5)\n     ^~~~");
+
 
     // test expectation of argument in function argument list
     let result = get_result("pow(5,)", & mut context);
     assert!(result.is_err());
     let msg = format!("{}", result.err().unwrap());
-    assert!(msg == "Error: Expected an argument.\npow(5,)\n      ^~~~ Found: symbol \")\".");
-    */
+    assert!(msg == "Error: Expected an argument.\npow(5,)\n      ^~~~ Found: symbol \")\"");
 }

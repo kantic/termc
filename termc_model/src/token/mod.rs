@@ -25,8 +25,7 @@ pub enum TokenType {
     Operation,
     Punctuation,
     Symbol(SymbolicTokenType),
-    FunctionArg,
-    UnknownToken
+    FunctionArg
 }
 
 /// Defines the Token structure.
