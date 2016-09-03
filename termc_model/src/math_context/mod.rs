@@ -206,10 +206,32 @@ impl<'a> MathContext {
         self.functions.contains_key(s) || self.user_constants.contains_key(s)
     }
 
+    /// Checks whether the specified string is a built-in function.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use termc_model::math_context::MathContext;
+    ///
+    /// let context = MathContext::new();
+    /// let is_built_in_func = context.is_built_in_function("arctan");
+    /// assert!(is_built_in_func == true);
+    /// ```
     pub fn is_built_in_function(& self, s: &'a str) -> bool {
         self.functions.contains_key(s)
     }
 
+    /// Checks whether the specified string is a user defined function.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use termc_model::math_context::MathContext;
+    ///
+    /// let context = MathContext::new();
+    /// let is_built_in_func = context.is_user_function("arctan");
+    /// assert!(is_built_in_func == false);
+    /// ```
     pub fn is_user_function(& self, s: &'a str) -> bool {
         self.user_functions.contains_key(s)
     }
@@ -259,10 +281,45 @@ impl<'a> MathContext {
         self.constants.contains_key(s) || self.user_constants.contains_key(s)
     }
 
+    /// Checks whether the specified string is a built-in constant.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use termc_model::math_context::MathContext;
+    ///
+    /// let context = MathContext::new();
+    /// let is_built_in_const = context.is_built_in_constant("pi");
+    /// assert!(is_built_in_const == true);
+    /// ```
     pub fn is_built_in_constant(& self, s:&'a str) -> bool {
         self.constants.contains_key(s)
     }
 
+    /// Checks whether the specified string is a user defined constant.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// extern crate num;
+    /// extern crate termc_model;
+    ///
+    /// use num::complex::Complex;
+    /// use termc_model::math_context::MathContext;
+    /// use termc_model::math_result::MathResult;
+    /// use termc_model::token::NumberType;
+    ///
+    /// fn main() {
+    ///     let mut context = MathContext::new();
+    ///     let is_built_in_const = context.is_user_constant("pi");
+    ///     assert!(is_built_in_const == false);
+    ///
+    ///     context.add_user_constant("custom_constr", MathResult::new(NumberType::Real, Complex::new(4.1, 0.0)));
+    ///
+    ///     let is_built_in_const = context.is_user_constant("custom_constr");
+    ///     assert!(is_built_in_const == true);
+    /// }
+    /// ```
     pub fn is_user_constant(& self, s:&'a str) -> bool {
         self.user_constants.contains_key(s)
     }
@@ -799,6 +856,29 @@ impl<'a> MathContext {
         NumberType::Real
     }
 
+    /// Adds the specified user constant to the mathematical context.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// extern crate num;
+    /// extern crate termc_model;
+    ///
+    /// use num::complex::Complex;
+    /// use termc_model::math_context::MathContext;
+    /// use termc_model::math_result::MathResult;
+    /// use termc_model::token::NumberType;
+    ///
+    /// fn main() {
+    ///     let mut context = MathContext::new();
+    ///     context.add_user_constant("c", MathResult::new(NumberType::Real, Complex::new(4.1, 0.0)));
+    ///
+    ///     let is_built_in_const = context.is_user_constant("c");
+    ///     assert!(is_built_in_const == true);
+    ///     let constr = context.get_constant_value("c").unwrap();
+    ///     assert!(constr.value.re - 4.1 < 10e-10);
+    /// }
+    /// ```
     pub fn add_user_constant(&mut self, repr: &str, value: MathResult) {
         self.user_constants.insert(String::from(repr), value);
     }

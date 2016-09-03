@@ -2,7 +2,6 @@
 use std::fmt;
 
 /// Defines a binary tree node structure
-//Todo: remove clone?
 #[derive(Clone)]
 pub struct TreeNode<T: Clone> {
     /// the content of the tree node

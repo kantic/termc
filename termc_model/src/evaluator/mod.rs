@@ -15,9 +15,14 @@ use tree::TreeNode;
 
 // Todo: ans variable should be set for each numerical result
 
+/// Defines the errors that may occur in the evaluation process.
 #[derive(Clone, Debug)]
 pub enum EvaluationError {
+    /// Error if a token occurs that is not of the expected type.
+    /// Arguments: ExpectedErrorTemplate instance.
     ExpectedError(ExpectedErrorTemplate),
+    /// Error if a string could not be parsed to a float.
+    /// Arguments: ParseFloatError instance.
     NumberError(ParseFloatError)
 }
 
@@ -34,7 +39,7 @@ impl fmt::Display for EvaluationError {
 
 impl From<ExpectedErrorTemplate> for EvaluationError {
 
-    /// Converts a ExpectedErrorTemplate into a ParseError.
+    /// Converts an ExpectedErrorTemplate into an EvaluationError.
     fn from(tmpl: ExpectedErrorTemplate) -> EvaluationError {
         EvaluationError::ExpectedError(tmpl)
     }
@@ -42,6 +47,7 @@ impl From<ExpectedErrorTemplate> for EvaluationError {
 
 impl From<ParseFloatError> for EvaluationError {
 
+    /// Converts a ParseFloatError into an EvaluationError.
     fn from(err: ParseFloatError) -> EvaluationError {
         EvaluationError::NumberError(err)
     }
@@ -73,24 +79,32 @@ pub enum EvaluationResult {
 }
 
 impl<'a> From<MathResult> for EvaluationResult {
+
+    /// Concerts a MathResult into an EvaluationResult.
     fn from(res: MathResult) -> EvaluationResult {
         EvaluationResult::Numerical(res)
     }
 }
 
 impl<'a> From<&'a TreeNode<Token>> for EvaluationResult {
+
+    /// Converts a TreeNode reference to an EvaluationResult.
     fn from(node: & TreeNode<Token>) -> EvaluationResult {
         EvaluationResult::Symbolical(node.clone())
     }
 }
 
 impl<'a> From<f64> for EvaluationResult {
+
+    /// Converts a float to an EvaluationResult.
     fn from(f: f64) -> EvaluationResult {
         EvaluationResult::Numerical(MathResult::from(f))
     }
 }
 
 impl<'a> From<Complex<f64>> for EvaluationResult {
+
+    /// Converts a complex number to an EvaluationResult.
     fn from(c: Complex<f64>) -> EvaluationResult {
         EvaluationResult::Numerical(MathResult::from(c))
     }
@@ -341,6 +355,8 @@ impl<'a> Evaluator<'a> {
         }
     }
 
+    /// Checks whether the specified EvaluationResult is of symbolic type.
+    /// If so, then an EvaluationError is returned, otherwise the numerical MathResult is returned.
     fn error_if_symbolic(res: EvaluationResult, input: & str) -> Result<MathResult, EvaluationError> {
         match res {
             EvaluationResult::Numerical(x) => Ok(x),
@@ -350,6 +366,8 @@ impl<'a> Evaluator<'a> {
         }
     }
 
+    /// Checks whether the specified TreeNode represents a built-in constant or function.
+    /// If so, then an EvaluationError is returned, otherwise the TreeNode is returned.
     fn error_if_built_in<'b>(n: &'b TreeNode<Token>, input: & str) -> Result<&'b TreeNode<Token>, EvaluationError> {
 
         match n.content.get_type() {

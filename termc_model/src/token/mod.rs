@@ -8,6 +8,7 @@ pub enum NumberType {
     Complex
 }
 
+/// Defines the types of symbols that may occur.
 #[derive(Debug, PartialEq, Clone)]
 pub enum SymbolicTokenType {
     UnknownConstant,
@@ -57,6 +58,7 @@ impl<'a> Token {
         & self.value
     }
 
+    /// Returns the position of the last character of the token in the user input string.
     pub fn get_end_pos(& self) -> u32 {
         self.end_pos
     }

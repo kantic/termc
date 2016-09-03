@@ -153,6 +153,19 @@ fn tst_get_result() {
     assert!(result.result_type == NumberType::Real);
     assert!(result.value.re - 5.0 < TEST_BOUND);
 
+    // test assignment of constant
+    let result = get_result("c = e + pi", & mut context);
+    assert!(result.is_ok());
+    let result = result.ok().unwrap();
+    assert!(result.is_none());
+    let c = context.get_constant_value("c");
+    assert!(c.is_some());
+    let c = c.unwrap();
+    let c = c.value.re;
+    assert!(c - (f64::consts::PI + f64::consts::E) < TEST_BOUND);
+    // reset context
+    let mut context = MathContext::new();
+
     // test chained binary operations
     let result = get_result("24*74+9^1.55-88/3", & mut context);
     assert!(result.is_ok());

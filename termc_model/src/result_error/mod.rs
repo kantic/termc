@@ -4,9 +4,14 @@ use std::error::Error;
 use parser::ParseError;
 use evaluator::EvaluationError;
 
+/// Represents the errors that may occur in the whole process of parsing and evaluating.
 #[derive(Clone, Debug)]
 pub enum ResultError {
+    /// Represents the errors that may occur in the parsing process
+    /// Arguments: ParseError
     ParseError(ParseError),
+    /// Represents the errors that may occur in the evaluation process
+    /// Arguments: EvaluationError
     EvaluationError(EvaluationError),
 }
 
@@ -23,7 +28,7 @@ impl fmt::Display for ResultError {
 
 impl From<ParseError> for ResultError {
 
-    /// Converts a ParseError into a ParseError.
+    /// Converts a ParseError into a ResultError.
     fn from(p: ParseError) -> ResultError {
         ResultError::ParseError(p)
     }
@@ -31,7 +36,7 @@ impl From<ParseError> for ResultError {
 
 impl From<EvaluationError> for ResultError {
 
-    /// Converts a EvaluationError into a ParseError.
+    /// Converts a EvaluationError into a ResultError.
     fn from(e: EvaluationError) -> ResultError {
         ResultError::EvaluationError(e)
     }

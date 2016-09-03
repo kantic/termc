@@ -102,6 +102,7 @@ impl<'a> Tokenizer<'a> {
         }
     }
 
+    /// Returns the input string.
     pub fn get_input(& self) -> & str {
         self.input_stream.get_input()
     }
@@ -282,8 +283,7 @@ impl<'a> Tokenizer<'a> {
         Token::new(TokenType::Punctuation, value, self.get_pos())
     }
 
-    /// Returns true if the specified character is a whitespace character.
-    /// Returns false otherwise.
+    /// Returns true if the specified character is a whitespace character, false otherwise.
     fn is_whitespace(c: char) -> bool {
         " \t\n".contains(c)
     }

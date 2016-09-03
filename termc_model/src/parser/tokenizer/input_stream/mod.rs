@@ -77,6 +77,7 @@ impl<'a> InputStream<'a> {
         self.pos
     }
 
+    /// Returns the input string.
     pub fn get_input(& self) -> & str {
         & self.input
     }
