@@ -277,9 +277,9 @@ impl<'a> Evaluator<'a> {
                     FunctionType::ArcCot => Ok(EvaluationResult::from(MathContext::function_arccot(& args[0]))),
                     FunctionType::UserFunction => {
                         let slice = subtree.successors.as_slice();
-                        let mut args_token : Vec<& Token> = Vec::new();
+                        let mut args_token : Vec<& TreeNode<Token>> = Vec::new();
                         for succ in slice {
-                            args_token.push(& succ.content);
+                            args_token.push(succ);
                         }
                         let f_tree = self.context.substitute_user_function_tree(subtree.content.get_value(), args_token);
                         match f_tree {
