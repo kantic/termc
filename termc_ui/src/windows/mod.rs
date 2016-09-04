@@ -36,7 +36,7 @@ impl TerminalUI for TerminalHandle {
 
     /// Prints the specified result on the terminal.
     fn print_result(& mut self, result: &str) {
-        println!("{}{}\n", ANS_PREFIX, result);
+        println!("{}{}", ANS_PREFIX, result);
     }
 
     /// Prints the specified error on the terminal.
