@@ -5,6 +5,7 @@ use std::f64;
 use std::str::FromStr;
 use std::fmt;
 use std::error::Error;
+use std::collections::HashSet;
 use error_templates::ExpectedErrorTemplate;
 use std::num::ParseFloatError;
 use num::complex::Complex;
@@ -12,8 +13,6 @@ use math_context::{MathContext, OperationType, FunctionType};
 use token::{Token, TokenType, SymbolicTokenType, NumberType};
 use math_result::MathResult;
 use tree::TreeNode;
-
-// Todo: ans variable should be set for each numerical result
 
 /// Defines the errors that may occur in the evaluation process.
 #[derive(Clone, Debug)]
@@ -128,7 +127,10 @@ impl<'a> Evaluator<'a> {
     pub fn evaluate(&'a mut self, tree: & TreeNode<Token>, input: & str) -> Result<Option<MathResult>, EvaluationError> { // Option<MathResult>: if none, then no result (e.g. assignment)
         let result = try!(self.recursive_evaluate(tree, input));
         match result {
-            EvaluationResult::Numerical(x) => Ok(Some(x)),
+            EvaluationResult::Numerical(x) => {
+                self.context.add_user_constant("ans", x.clone());
+                Ok(Some(x))
+            },
             EvaluationResult::Symbolical(sym) => {
                 match sym.content.get_type() {
                     TokenType::Operation => {
@@ -165,8 +167,6 @@ impl<'a> Evaluator<'a> {
                 Ok(EvaluationResult::from(c_val))
             },
 
-            // Todo: support user functions at math_context
-
             TokenType::Operation => {
                 let op_type = self.context.get_operation_type(subtree.content.get_value().as_ref());
                 let op_type = op_type.unwrap(); // the parser ensures that this is a valid operation type
@@ -176,85 +176,66 @@ impl<'a> Evaluator<'a> {
                     return Err(EvaluationError::from(ExpectedErrorTemplate::new(
                         input, "operands", Some(format!("operation \"{}\" without any operands", subtree.content)), subtree.content.get_end_pos())))
                 }
-                let left_val = try!(self.recursive_evaluate(subtree.successors[0].as_ref(), input));
-                if subtree.successors.len() == 2 {  // binary operation
-                    let right_val = try!(self.recursive_evaluate(subtree.successors[1].as_ref(), input));
-                    // let right_val = try!(right_val.ok_or(EvaluationError::from(ExpectedErrorTemplate::new(input, "non-symbolic expression"))));
 
-                    match op_type {
-                        OperationType::Add => {
-                            let left_val_num = try!(Evaluator::error_if_symbolic(left_val, input));
+                if op_type == OperationType::Assign {
+                    if subtree.successors.len() != 2 {
+                        return Err(EvaluationError::from(ExpectedErrorTemplate::new(input, "2 arguments", Some(
+                            format!("{} arguments", subtree.successors.len())), subtree.content.get_end_pos())))
+                    }
+
+                    let left_val_sym = try!(self.error_if_built_in(subtree.successors[0].as_ref(), input));
+                    match left_val_sym.content.get_type() {
+                        TokenType::Symbol(SymbolicTokenType::UnknownConstant) | TokenType::UserConstant => {
+                            let right_val = try!(self.recursive_evaluate(subtree.successors[1].as_ref(), input));
                             let right_val_num = try!(Evaluator::error_if_symbolic(right_val, input));
-                            Ok(EvaluationResult::from(MathContext::operation_add(& left_val_num, & right_val_num)))
+                            self.context.add_user_constant(left_val_sym.content.get_value(), right_val_num);
+                            Ok(EvaluationResult::from(subtree))
                         },
-                        OperationType::Sub => {
-                            let left_val_num = try!(Evaluator::error_if_symbolic(left_val, input));
-                            let right_val_num = try!(Evaluator::error_if_symbolic(right_val, input));
-                            Ok(EvaluationResult::from(MathContext::operation_sub(& left_val_num, & right_val_num)))
+
+                        TokenType::Symbol(SymbolicTokenType::UnknownFunction) | TokenType::UserFunction => {
+                            let f_name = left_val_sym.content.get_value();
+                            let f_args = try!(Evaluator::get_function_args(left_val_sym, input));
+                            self.context.add_user_function(f_name, subtree.successors[1].as_ref().clone(), f_args, input);
+                            Ok(EvaluationResult::from(subtree))
                         },
-                        OperationType::Mul => {
-                            let left_val_num = try!(Evaluator::error_if_symbolic(left_val, input));
-                            let right_val_num = try!(Evaluator::error_if_symbolic(right_val, input));
-                            Ok(EvaluationResult::from(MathContext::operation_mul(& left_val_num, & right_val_num)))
-                        },
-                        OperationType::Div => {
-                            let left_val_num = try!(Evaluator::error_if_symbolic(left_val, input));
-                            let right_val_num = try!(Evaluator::error_if_symbolic(right_val, input));
-                            Ok(EvaluationResult::from(MathContext::operation_div(& left_val_num, & right_val_num)))
-                        },
-                        OperationType::Pow => {
-                            let left_val_num = try!(Evaluator::error_if_symbolic(left_val, input));
-                            let right_val_num = try!(Evaluator::error_if_symbolic(right_val, input));
-                            Ok(EvaluationResult::from(MathContext::operation_pow(& left_val_num, & right_val_num)))
-                        },
-                        OperationType::Assign => {
-                            // check left and right hand side
-                            let left_val_sym = try!(Evaluator::error_if_built_in(subtree.successors[0].as_ref(), input));
-                            let right_val_num = try!(Evaluator::error_if_symbolic(right_val, input));
-                            match left_val_sym.content.get_type() {
-                                TokenType::Symbol(SymbolicTokenType::UnknownConstant) | TokenType::UserConstant => {
-                                    if self.context.is_built_in_constant(left_val_sym.content.get_value()) {
-                                        Err(EvaluationError::from(ExpectedErrorTemplate::new(input, "new constant name",
-                                                                                             Some(format!("built in constant name \"{}\"", left_val_sym.content.get_value())),
-                                                                                             left_val_sym.content.get_end_pos())))
-                                    }
-                                    else {
-                                        self.context.add_user_constant(left_val_sym.content.get_value(), right_val_num);
-                                        Ok(EvaluationResult::from(subtree))
-                                    }
-                                },
-                                TokenType::Symbol(SymbolicTokenType::UnknownFunction) | TokenType::UserFunction => {
-                                    Ok(EvaluationResult::from(0.0)) // dummy
-                                    //TODO: Implement add_user_function function to math_context
-                                },
-                                _ => {
-                                    // error: left hand side of an assignment must be a symbolical type
-                                    Err(EvaluationError::from(ExpectedErrorTemplate::new(input, "new or user defined constant or function",
-                                                                                         Some(format!("expression \"{}\"", left_val_sym.content)),
-                                                                                         left_val_sym.content.get_end_pos())))
-                                }
-                            }
+
+                        _ => {
+                            Err(EvaluationError::from(ExpectedErrorTemplate::new(input, "constant or function definition", Some(
+                            format!("expression \"{}\"", left_val_sym.content)), left_val_sym.content.get_end_pos())))
                         }
                     }
                 }
                 else {
-                    // unary operation
+                    let left_val = try!(self.recursive_evaluate(subtree.successors[0].as_ref(), input));
                     let left_val_num = try!(Evaluator::error_if_symbolic(left_val, input));
-                    match op_type {
-                        OperationType::Add => {
-                            Ok(EvaluationResult::from(MathContext::operation_add(& MathResult::from(0.0), & left_val_num)))
-                        },
-                        OperationType::Sub => {
-                            Ok(EvaluationResult::from(MathContext::operation_sub(& MathResult::from(0.0), & left_val_num)))
-                        },
+                    if subtree.successors.len() == 2 {
+                        // binary operation
+                        let right_val = try!(self.recursive_evaluate(subtree.successors[1].as_ref(), input));
+                        let right_val_num = try!(Evaluator::error_if_symbolic(right_val, input));
+                        match op_type {
+                            OperationType::Add => Ok(EvaluationResult::from(MathContext::operation_add(& left_val_num, & right_val_num))),
+                            OperationType::Sub => Ok(EvaluationResult::from(MathContext::operation_sub(& left_val_num, & right_val_num))),
+                            OperationType::Mul => Ok(EvaluationResult::from(MathContext::operation_mul(& left_val_num, & right_val_num))),
+                            OperationType::Div => Ok(EvaluationResult::from(MathContext::operation_div(& left_val_num, & right_val_num))),
+                            OperationType::Pow => Ok(EvaluationResult::from(MathContext::operation_pow(& left_val_num, & right_val_num))),
+                            _ => Err(EvaluationError::from(ExpectedErrorTemplate::new(input, "binary mathematical operation",
+                                                                                      Some(format!("operation \"{}\"", subtree.content)),
+                                                                                      subtree.content.get_end_pos())))
+                        }
+                    }
+                    else {
+                        match op_type {
+                        OperationType::Add => Ok(EvaluationResult::from(MathContext::operation_add(& MathResult::from(0.0), & left_val_num))),
+                        OperationType::Sub => Ok(EvaluationResult::from(MathContext::operation_sub(& MathResult::from(0.0), & left_val_num))),
                         _ => Err(EvaluationError::from(ExpectedErrorTemplate::new(input, "unary operation",
                                                                                   Some(format!("non-unary operation \"{}\"", subtree.content)),
                                                                                   subtree.content.get_end_pos())))
+                        }
                     }
                 }
             },
 
-            TokenType::Function => {
+            TokenType::Function | TokenType::UserFunction => {
                 let f_type = self.context.get_function_type(subtree.content.get_value().as_ref());
                 let f_type = f_type.unwrap();
 
@@ -274,67 +255,41 @@ impl<'a> Evaluator<'a> {
                 }
 
                 match f_type {
-                    FunctionType::Cos => {
-                        Ok(EvaluationResult::from(MathContext::function_cos(& args[0])))
-                    },
-                    FunctionType::Sin => {
-                        Ok(EvaluationResult::from(MathContext::function_sin(& args[0])))
-                    },
-                    FunctionType::Tan => {
-                        Ok(EvaluationResult::from(MathContext::function_tan(& args[0])))
-                    },
-                    FunctionType::Cot => {
-                        Ok(EvaluationResult::from(MathContext::function_cot(& args[0])))
-                    }
-                    FunctionType::Exp => {
-                        Ok(EvaluationResult::from(MathContext::function_exp(& args[0])))
-                    },
-                    FunctionType::Cosh => {
-                        Ok(EvaluationResult::from(MathContext::function_cosh(& args[0])))
-                    },
-                    FunctionType::Sinh => {
-                        Ok(EvaluationResult::from(MathContext::function_sinh(& args[0])))
-                    },
-                    FunctionType::Tanh => {
-                        Ok(EvaluationResult::from(MathContext::function_tanh(& args[0])))
-                    },
-                    FunctionType::ArcCosh => {
-                        Ok(EvaluationResult::from(MathContext::function_arccosh(& args[0])))
-                    },
-                    FunctionType::ArcSinh => {
-                        Ok(EvaluationResult::from(MathContext::function_arcsinh(& args[0])))
-                    },
-                    FunctionType::ArcTanh => {
-                        Ok(EvaluationResult::from(MathContext::function_arctanh(& args[0])))
-                    },
-                    FunctionType::Sqrt => {
-                        Ok(EvaluationResult::from(MathContext::function_sqrt(& args[0])))
-                    },
-                    FunctionType::Ln => {
-                        Ok(EvaluationResult::from(MathContext::function_ln(& args[0])))
-                    },
-                    FunctionType::Pow => {
-                        Ok(EvaluationResult::from(MathContext::operation_pow(& args[0], & args[1])))
-                    },
-                    FunctionType::Root => {
-                        Ok(EvaluationResult::from(MathContext::operation_pow(& args[0], & MathResult::new(args[1].result_type.clone(),
-                                                                                                          1.0 / args[1].value))))
-                    },
-                    FunctionType::ArcCos => {
-                        Ok(EvaluationResult::from(MathContext::function_arccos(& args[0])))
-                    },
-                    FunctionType::ArcSin => {
-                        Ok(EvaluationResult::from(MathContext::function_arcsin(& args[0])))
-                    },
-                    FunctionType::ArcTan => {
-                        Ok(EvaluationResult::from(MathContext::function_arctan(& args[0])))
-                    },
-                    FunctionType::ArcCot => {
-                        Ok(EvaluationResult::from(MathContext::function_arccot(& args[0])))
-                    },
+                    FunctionType::Cos => Ok(EvaluationResult::from(MathContext::function_cos(& args[0]))),
+                    FunctionType::Sin => Ok(EvaluationResult::from(MathContext::function_sin(& args[0]))),
+                    FunctionType::Tan => Ok(EvaluationResult::from(MathContext::function_tan(& args[0]))),
+                    FunctionType::Cot => Ok(EvaluationResult::from(MathContext::function_cot(& args[0]))),
+                    FunctionType::Exp => Ok(EvaluationResult::from(MathContext::function_exp(& args[0]))),
+                    FunctionType::Cosh => Ok(EvaluationResult::from(MathContext::function_cosh(& args[0]))),
+                    FunctionType::Sinh => Ok(EvaluationResult::from(MathContext::function_sinh(& args[0]))),
+                    FunctionType::Tanh => Ok(EvaluationResult::from(MathContext::function_tanh(& args[0]))),
+                    FunctionType::ArcCosh => Ok(EvaluationResult::from(MathContext::function_arccosh(& args[0]))),
+                    FunctionType::ArcSinh => Ok(EvaluationResult::from(MathContext::function_arcsinh(& args[0]))),
+                    FunctionType::ArcTanh => Ok(EvaluationResult::from(MathContext::function_arctanh(& args[0]))),
+                    FunctionType::Sqrt => Ok(EvaluationResult::from(MathContext::function_sqrt(& args[0]))),
+                    FunctionType::Ln => Ok(EvaluationResult::from(MathContext::function_ln(& args[0]))),
+                    FunctionType::Pow => Ok(EvaluationResult::from(MathContext::operation_pow(& args[0], & args[1]))),
+                    FunctionType::Root => Ok(EvaluationResult::from(MathContext::operation_pow(& args[0], & MathResult::new(
+                        args[1].result_type.clone(), 1.0 / args[1].value)))),
+                    FunctionType::ArcCos => Ok(EvaluationResult::from(MathContext::function_arccos(& args[0]))),
+                    FunctionType::ArcSin => Ok(EvaluationResult::from(MathContext::function_arcsin(& args[0]))),
+                    FunctionType::ArcTan => Ok(EvaluationResult::from(MathContext::function_arctan(& args[0]))),
+                    FunctionType::ArcCot => Ok(EvaluationResult::from(MathContext::function_arccot(& args[0]))),
                     FunctionType::UserFunction => {
-                        Ok(EvaluationResult::from(0.0)) // dummy
-                        //TODO: Implement function substituion in math_context
+                        let slice = subtree.successors.as_slice();
+                        let mut args_token : Vec<& Token> = Vec::new();
+                        for succ in slice {
+                            args_token.push(& succ.content);
+                        }
+                        let f_tree = self.context.substitute_user_function_tree(subtree.content.get_value(), args_token);
+                        match f_tree {
+                            Some(x) => {
+                                let f_input = self.context.get_user_function_input(subtree.content.get_value()).unwrap_or(String::new());
+                                self.recursive_evaluate(& x, & f_input)
+                            },
+                            None => Err(EvaluationError::from(ExpectedErrorTemplate::new(input, format!("function call of user defined function {}", subtree.content), Some(
+                                format!("expression {}", subtree.content)), subtree.content.get_end_pos())))
+                        }
                     }
                 }
             },
@@ -348,9 +303,8 @@ impl<'a> Evaluator<'a> {
             }
 
             _ => {  // punctuation and unknown tokens should not occur in the evaluation method
-                Err(EvaluationError::from(ExpectedErrorTemplate::new(input, "function or operation",
-                                                                     Some(format!("{}", subtree.content)),
-                                                                     subtree.content.get_end_pos())))
+                Err(EvaluationError::from(ExpectedErrorTemplate::new(input, "function or operation", Some(
+                    format!("symbol {}", subtree.content)), subtree.content.get_end_pos())))
             }
         }
     }
@@ -361,19 +315,45 @@ impl<'a> Evaluator<'a> {
         match res {
             EvaluationResult::Numerical(x) => Ok(x),
             EvaluationResult::Symbolical(n) => Err(EvaluationError::from(
-                ExpectedErrorTemplate::new(input, "non-symbolic expression", Some(format!("symbolic expression \"{}\"", n.content.get_value())),
+                ExpectedErrorTemplate::new(input, "non-symbolic expression", Some(format!("symbolic expression \"{}\"", n.content)),
                                            n.content.get_end_pos())))
         }
     }
 
     /// Checks whether the specified TreeNode represents a built-in constant or function.
     /// If so, then an EvaluationError is returned, otherwise the TreeNode is returned.
-    fn error_if_built_in<'b>(n: &'b TreeNode<Token>, input: & str) -> Result<&'b TreeNode<Token>, EvaluationError> {
+    fn error_if_built_in<'b>(& self, n: &'b TreeNode<Token>, input: & str) -> Result<&'b TreeNode<Token>, EvaluationError> {
 
-        match n.content.get_type() {
-            TokenType::Constant | TokenType::Function => Err(EvaluationError::from(
-                ExpectedErrorTemplate::new(input, "new constant or function", Some(format!("built-in expression \"{}\"", n.content.get_value())), n.content.get_end_pos()))),
-            _ => Ok(n)
+        if self.context.is_built_in_function(n.content.get_value()) || self.context.is_built_in_constant(n.content.get_value()) ||
+            n.content.get_type() == TokenType::Constant {
+            Err(EvaluationError::from(ExpectedErrorTemplate::new(input, "new constant or function", Some(
+                format!("built-in expression \"{}\"", n.content)), n.content.get_end_pos())))
+        }
+        else {
+            Ok(n)
+        }
+    }
+
+    /// Returns the list of arguments of the specified function call tree.
+    fn get_function_args(n: & TreeNode<Token>, input: & str) -> Result<Vec<String>, EvaluationError> {
+        let mut args_set : HashSet<String> = HashSet::new();
+        let mut args : Vec<String> = Vec::new();
+        for succ in &n.successors {
+            if succ.successors.len() != 0 {
+                return Err(EvaluationError::from(ExpectedErrorTemplate::new(input, "function definition", Some(
+                    format!("expression \"{}\"", n.content)), n.content.get_end_pos())))
+            }
+
+            args.push(String::from(succ.content.get_value()));
+            args_set.insert(String::from(succ.content.get_value()));
+        }
+
+        if args.len() != args_set.len() {
+            Err(EvaluationError::from(ExpectedErrorTemplate::new(input, "distinct arguments", Some(
+                String::from("function definition with partly equal arguments")), n.content.get_end_pos())))
+        }
+        else {
+            Ok(args)
         }
     }
 }

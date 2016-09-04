@@ -4,8 +4,8 @@ pub mod math_context;
 pub mod math_result;
 pub mod token;
 pub mod result_error;
+pub mod tree;
 
-mod tree;
 mod parser;
 mod evaluator;
 mod error_templates;

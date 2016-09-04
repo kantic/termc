@@ -4,7 +4,7 @@ extern crate num;
 use std::f64;
 use std::collections::{HashMap, HashSet};
 use num::complex::Complex;
-use token::Token;
+use token::{Token, TokenType, SymbolicTokenType};
 use token::NumberType;
 use math_result::MathResult;
 use tree::TreeNode;
@@ -57,6 +57,8 @@ pub struct MathContext {
     functions: HashMap<String, (FunctionType, u32)>,
     /// Set of user defined functions (the function expression tree and it's variables).
     user_functions: HashMap<String, (TreeNode<Token>, Vec<String>, FunctionType)>,
+    /// The user inputs that define user functions.
+    user_function_inputs: HashMap<String, String>,
     /// Map of built-in constants (constant representation and value).
     constants : HashMap<String, MathResult>,
     /// Map of user defined constants (constant representation and value).
@@ -142,8 +144,8 @@ impl<'a> MathContext {
 
         MathContext {
             operations: operations, number_symbols: number_symbols, literals: literals,
-            functions: functions, user_functions: HashMap::new(), constants: constants,
-            user_constants: HashMap::new(), punctuation: punctuation
+            functions: functions, user_functions: HashMap::new(), user_function_inputs: HashMap::new(),
+            constants: constants, user_constants: HashMap::new(), punctuation: punctuation
         }
     }
 
@@ -158,7 +160,7 @@ impl<'a> MathContext {
     /// let is_op = context.is_operation("+");
     /// assert!(is_op == true);
     /// ```
-    pub fn is_operation(&self, s: &'a str) -> bool {
+    pub fn is_operation(&self, s: & str) -> bool {
         self.operations.contains_key(s)
     }
 
@@ -177,7 +179,7 @@ impl<'a> MathContext {
     /// let is_op = context.is_unary_operation("*");
     /// assert!(is_op == false);
     /// ```
-    pub fn is_unary_operation(&self, s: &'a str) -> bool {
+    pub fn is_unary_operation(&self, s: & str) -> bool {
         match self.get_operation_type(s) {
             Some(x) => {
                 if x == OperationType::Add || x == OperationType::Sub {
@@ -202,7 +204,7 @@ impl<'a> MathContext {
     /// let is_func = context.is_function("cos");
     /// assert!(is_func == true);
     /// ```
-    pub fn is_function(& self, s: &'a str) -> bool {
+    pub fn is_function(& self, s: & str) -> bool {
         self.functions.contains_key(s) || self.user_constants.contains_key(s)
     }
 
@@ -217,7 +219,7 @@ impl<'a> MathContext {
     /// let is_built_in_func = context.is_built_in_function("arctan");
     /// assert!(is_built_in_func == true);
     /// ```
-    pub fn is_built_in_function(& self, s: &'a str) -> bool {
+    pub fn is_built_in_function(& self, s: & str) -> bool {
         self.functions.contains_key(s)
     }
 
@@ -232,7 +234,7 @@ impl<'a> MathContext {
     /// let is_built_in_func = context.is_user_function("arctan");
     /// assert!(is_built_in_func == false);
     /// ```
-    pub fn is_user_function(& self, s: &'a str) -> bool {
+    pub fn is_user_function(& self, s: & str) -> bool {
         self.user_functions.contains_key(s)
     }
 
@@ -277,7 +279,7 @@ impl<'a> MathContext {
     /// let is_constant = context.is_constant("pi");
     /// assert!(is_constant == true);
     /// ```
-    pub fn is_constant(& self, s: &'a str) -> bool {
+    pub fn is_constant(& self, s: & str) -> bool {
         self.constants.contains_key(s) || self.user_constants.contains_key(s)
     }
 
@@ -292,7 +294,7 @@ impl<'a> MathContext {
     /// let is_built_in_const = context.is_built_in_constant("pi");
     /// assert!(is_built_in_const == true);
     /// ```
-    pub fn is_built_in_constant(& self, s:&'a str) -> bool {
+    pub fn is_built_in_constant(& self, s: & str) -> bool {
         self.constants.contains_key(s)
     }
 
@@ -320,7 +322,7 @@ impl<'a> MathContext {
     ///     assert!(is_built_in_const == true);
     /// }
     /// ```
-    pub fn is_user_constant(& self, s:&'a str) -> bool {
+    pub fn is_user_constant(& self, s: & str) -> bool {
         self.user_constants.contains_key(s)
     }
 
@@ -396,7 +398,7 @@ impl<'a> MathContext {
     /// let op_type = context.get_operation_type("+");
     /// assert!(op_type == Some(OperationType::Add));
     /// ```
-    pub fn get_operation_type(&self, s: &'a str) -> Option<OperationType> {
+    pub fn get_operation_type(&self, s: & str) -> Option<OperationType> {
         match self.operations.get(s) {
             Some(x) => Some(x.0.clone()),
             None => None
@@ -414,7 +416,7 @@ impl<'a> MathContext {
     /// let op_prec = context.get_operation_precedence("+");
     /// assert!(op_prec == Some(2 as u32));
     /// ```
-    pub fn get_operation_precedence(& self, s: &'a str) -> Option<u32> {
+    pub fn get_operation_precedence(& self, s: & str) -> Option<u32> {
         match self.operations.get(s) {
             Some(x) => Some(x.1),
             None => None
@@ -432,7 +434,7 @@ impl<'a> MathContext {
     /// let func_type = context.get_function_type("cosh");
     /// assert!(func_type == Some(FunctionType::Cosh));
     /// ```
-    pub fn get_function_type(& self, s: &'a str) -> Option<FunctionType> {
+    pub fn get_function_type(& self, s: & str) -> Option<FunctionType> {
         match self.functions.get(s) {
             Some(x) => Some(x.0.clone()),
             None => {
@@ -455,7 +457,7 @@ impl<'a> MathContext {
     /// let n_args = context.get_function_arg_num("pow");
     /// assert!(n_args == Some(2));
     /// ```
-    pub fn get_function_arg_num(& self, s: &'a str) -> Option<u32> {
+    pub fn get_function_arg_num(& self, s: & str) -> Option<u32> {
         match self.functions.get(s) {
             Some(ref x) => Some(x.1),
             None => {
@@ -879,7 +881,151 @@ impl<'a> MathContext {
     ///     assert!(constr.value.re - 4.1 < 10e-10);
     /// }
     /// ```
-    pub fn add_user_constant(&mut self, repr: &str, value: MathResult) {
-        self.user_constants.insert(String::from(repr), value);
+    pub fn add_user_constant<S>(& mut self, repr: S, value: MathResult) where S: Into<String> {
+        self.user_constants.insert(repr.into(), value);
+    }
+
+    /// Adds the specified user constant to the mathematical context.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// extern crate num;
+    /// extern crate termc_model;
+    ///
+    /// use num::complex::Complex;
+    /// use termc_model::math_context::MathContext;
+    /// use termc_model::math_result::MathResult;
+    /// use termc_model::token::{Token, TokenType, SymbolicTokenType, NumberType};
+    /// use termc_model::tree::TreeNode;
+    ///
+    /// fn main() {
+    ///     let mut context = MathContext::new();
+    ///
+    ///     let mut input = "f(x) = x";
+    ///     let mut f = Token::new(TokenType::Symbol(SymbolicTokenType::UnknownFunction), String::from("f"), 0);
+    ///     let mut f_node: TreeNode<Token> = TreeNode::new(f);
+    ///     let mut x = Token::new(TokenType::Symbol(SymbolicTokenType::UnknownConstant), String::from("x"), 2);
+    ///     let mut x_node: TreeNode<Token> = TreeNode::new(x);
+    ///     f_node.successors.push(Box::new(x_node));
+    ///     context.add_user_function("f", f_node, vec![String::from("x")], input);
+    ///
+    ///     let is_built_in_fun = context.is_user_function("f");
+    ///     assert!(is_built_in_fun == true);
+    /// }
+    /// ```
+    pub fn add_user_function<S1, S2>(& mut self, repr: S1, t: TreeNode<Token>, vars: Vec<String>,
+                                     input: S2) where S1: Into<String>, S2: Into<String> {
+        let repr_string : String = repr.into();
+        self.user_functions.insert(repr_string.clone(), (t, vars, FunctionType::UserFunction));
+        self.user_function_inputs.insert(repr_string, input.into());
+    }
+
+    /// Substitutes the arguments of the specified user function with the specified tokens.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// extern crate num;
+    /// extern crate termc_model;
+    ///
+    /// use num::complex::Complex;
+    /// use termc_model::math_context::MathContext;
+    /// use termc_model::math_result::MathResult;
+    /// use termc_model::token::{Token, TokenType, SymbolicTokenType, NumberType};
+    /// use termc_model::tree::TreeNode;
+    ///
+    /// fn main() {
+    ///     let mut context = MathContext::new();
+    ///     let mut input = "f(x) = x";
+    ///     let mut f = Token::new(TokenType::Symbol(SymbolicTokenType::UnknownFunction), String::from("f"), 0);
+    ///     let mut f_node: TreeNode<Token> = TreeNode::new(f);
+    ///     let mut x = Token::new(TokenType::Symbol(SymbolicTokenType::UnknownConstant), String::from("x"), 2);
+    ///     let mut x_node: TreeNode<Token> = TreeNode::new(x);
+    ///     f_node.successors.push(Box::new(x_node));
+    ///     context.add_user_function("f", f_node, vec![String::from("x")], input);
+    ///
+    ///     let is_built_in_fun = context.is_user_function("f");
+    ///     assert!(is_built_in_fun == true);
+    ///
+    ///     let input2 = "f(0.5)";
+    ///     let val_t = Token::new(TokenType::Number(NumberType::Real), String::from("0.5"), 4);
+    ///     let substituted = context.substitute_user_function_tree("f", vec![& val_t]).unwrap();
+    ///     assert!(substituted.content.get_value() == "f");
+    ///     assert!(substituted.successors[0].content.get_value() == "0.5");
+    /// }
+    /// ```
+    pub fn substitute_user_function_tree(& self, repr: & str, args: Vec<& Token>) -> Option<TreeNode<Token>> {
+
+        let f_entry = self.user_functions.get(repr);
+        if f_entry.is_none() {
+            return None;
+        }
+        let f_entry = f_entry.unwrap();
+        let mut f_tree = f_entry.0.clone();
+        let f_args = &f_entry.1;
+        if f_args.len() != args.len() {
+            return None;
+        }
+
+        let mut args_map : HashMap<String, & Token> = HashMap::new();
+        for i in 0..args.len() {
+            args_map.insert(f_args[i].clone(), args[i]);
+        }
+
+        MathContext::substitute_user_function_args(& mut f_tree, & args_map);
+        Some(f_tree)
+    }
+
+    /// Substitutes all types of constant tokens of the specified tree with the tokens mapped by the specified map.
+    fn substitute_user_function_args(t: & mut TreeNode<Token>, m: & HashMap<String, & Token>) {
+        match t.content.get_type() {
+            TokenType::Constant | TokenType::UserConstant | TokenType::Symbol(SymbolicTokenType::UnknownConstant) => {
+                let sub = m.get(t.content.get_value());
+                if sub.is_some() {
+                    let sub = sub.cloned().unwrap();
+                    let sub = sub.clone();
+                    t.content = sub;
+                }
+            },
+            _ => ()
+        }
+
+        for succ in t.successors.as_mut_slice() {
+            MathContext::substitute_user_function_args(succ, m);
+        }
+    }
+
+    /// Gets the user input that defined the specified user function.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// extern crate num;
+    /// extern crate termc_model;
+    ///
+    /// use num::complex::Complex;
+    /// use termc_model::math_context::MathContext;
+    /// use termc_model::math_result::MathResult;
+    /// use termc_model::token::{Token, TokenType, SymbolicTokenType, NumberType};
+    /// use termc_model::tree::TreeNode;
+    ///
+    /// fn main() {
+    ///     let mut context = MathContext::new();
+    ///
+    ///     let mut input = "f(x) = x";
+    ///     let mut f = Token::new(TokenType::Symbol(SymbolicTokenType::UnknownFunction), String::from("f"), 0);
+    ///     let mut f_node: TreeNode<Token> = TreeNode::new(f);
+    ///     let mut x = Token::new(TokenType::Symbol(SymbolicTokenType::UnknownConstant), String::from("x"), 2);
+    ///     let mut x_node: TreeNode<Token> = TreeNode::new(x);
+    ///     f_node.successors.push(Box::new(x_node));
+    ///     context.add_user_function("f", f_node, vec![String::from("x")], input);
+    ///
+    ///     let f_input = context.get_user_function_input("f").unwrap();
+    ///     assert!(f_input == "f(x) = x");
+    /// }
+    /// ```
+    pub fn get_user_function_input(& self, repr: & str) -> Option<String> {
+        self.user_function_inputs.get(repr).cloned()
     }
 }

@@ -166,6 +166,39 @@ fn tst_get_result() {
     // reset context
     let mut context = MathContext::new();
 
+    // test assignment of function
+    let result = get_result("f(x, y) = x + y", & mut context);
+    assert!(result.is_ok());
+    let result = result.ok().unwrap();
+    assert!(result.is_none());
+    let is_fun = context.is_user_function("f");
+    assert!(is_fun == true);
+    let result = get_result("f(3, 15.2)", & mut context);
+    assert!(result.is_ok());
+    let result = result.ok().unwrap();
+    assert!(result.is_some());
+    let result = result.unwrap();
+    assert!(result.result_type == NumberType::Real);
+    assert!(result.value.re - 18.2 < TEST_BOUND);
+    // reset context
+    let mut context = MathContext::new();
+
+    // test the definition of the ans constant
+    // for this test, the context should be reset
+    let result = get_result("15-8.78", & mut context);
+    assert!(result.is_ok());
+    assert!(result.is_ok());
+    let result = result.ok().unwrap();
+    assert!(result.is_some());
+    let result = result.unwrap();
+    assert!(result.result_type == NumberType::Real);
+    assert!(result.value.re - 6.22 < TEST_BOUND);
+    let ans = context.get_constant_value("ans");
+    assert!(ans.is_some());
+    let ans = ans.unwrap();
+    assert!(ans.value.re - 6.22 < TEST_BOUND);
+
+
     // test chained binary operations
     let result = get_result("24*74+9^1.55-88/3", & mut context);
     assert!(result.is_ok());
@@ -542,7 +575,7 @@ fn tst_get_result() {
     assert!(msg == "Error: Expected symbol \")\".\npow(5,\n      ^~~~");
 
 
-    // test argument number for functions
+    // test argument number error for functions
     let result = get_result("pow(5)", & mut context);
     assert!(result.is_err());
     let msg = format!("{}", result.err().unwrap());
@@ -554,4 +587,18 @@ fn tst_get_result() {
     assert!(result.is_err());
     let msg = format!("{}", result.err().unwrap());
     assert!(msg == "Error: Expected an argument.\npow(5,)\n      ^~~~ Found: symbol \")\"");
+
+    // test expectation of non-built-in constant when a user constant is defined
+    let result = get_result("pi = 5", & mut context);
+    assert!(result.is_err());
+    let msg = format!("{}", result.err().unwrap());
+    assert!(msg == "Error: Expected new constant or function.\npi = 5\n ^~~~ Found: built-in expression \"pi\"");
+
+    // test expectation error for recursive user function definition
+    let _ = get_result("z(x) = z(x) + 2", & mut context);
+    let result = get_result("z(1)", & mut context);
+    assert!(result.is_err());
+    let msg = format!("{}", result.err().unwrap());
+    assert!(msg == "Error: Expected non-symbolic expression.\nz(x) = z(x) + 2\n       ^~~~ Found: symbolic expression \"z\"");
+    // context needs to be reset here if further tests are added
 }

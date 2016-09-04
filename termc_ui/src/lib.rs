@@ -17,7 +17,7 @@ static PROMPT : &'static str = ">>> ";
 static PROMPT_LEN : u16 = 4;
 
 /// Defines the answer prefix
-static ANS_PREFIX : &'static str = "ans: ";
+static ANS_PREFIX : &'static str = "ans = ";
 
 /// Defines the ASCII number for the "Enter" key.
 const ENTER_KEY : char = '\x0A';
