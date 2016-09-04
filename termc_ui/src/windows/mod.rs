@@ -43,4 +43,9 @@ impl TerminalUI for TerminalHandle {
     fn print_error<T: Error>(& mut self, err: T) {
         println!("{}\n", err);
     }
+
+    /// Prints the specified string on the terminal.
+    fn print_str(& mut self, s: & str) {
+        println!("{}", s);
+    }
 }

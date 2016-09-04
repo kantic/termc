@@ -2,20 +2,24 @@ extern crate num;
 
 pub mod math_context;
 pub mod math_result;
-mod tree;
+pub mod token;
+pub mod result_error;
+pub mod tree;
+
 mod parser;
 mod evaluator;
+mod error_templates;
 
 #[cfg(test)]
 mod test;
 
-use std::f64;
 use parser::{Parser, ParseError};
-use parser::tokenizer::Token;
+use token::Token;
 use math_context::MathContext;
 use tree::TreeNode;
-use evaluator::Evaluator;
+use evaluator::{Evaluator, EvaluationError};
 use math_result::MathResult;
+use result_error::ResultError;
 
 /// Creates an expression tree from the specified input string.
 fn parse(s: & str, context: & MathContext) -> Result<TreeNode<Token>, ParseError> {
@@ -25,20 +29,16 @@ fn parse(s: & str, context: & MathContext) -> Result<TreeNode<Token>, ParseError
 }
 
 /// Evaluates the specified expression tree.
-fn evaluate(tree: & TreeNode<Token>, context: & MathContext) -> Option<MathResult> {
+fn evaluate(tree: & TreeNode<Token>, context: & mut MathContext, s: & str) -> Result<Option<MathResult>, EvaluationError> {
 
-    let e = Evaluator::new(context);
-    e.evaluate(tree)
+    let mut e = Evaluator::new(context);
+    e.evaluate(tree, s)
 }
 
 /// Computes the result of the specified input string containing an mathematical expression.
-pub fn get_result(s: & str, context: & MathContext) -> Result<MathResult, ParseError> {
-
+pub fn get_result(s: & str, context: & mut MathContext) -> Result<Option<MathResult>, ResultError> {
     match parse(s, context) {
-        Ok(ref x) => match evaluate(x, context) {
-            Some(x) => Ok(x),
-            None => Ok(MathResult::from(f64::NAN))
-        },
-        Err(err) => Err(err)
+        Ok(ref x) => Ok(try!(evaluate(x, context, s))),
+        Err(err) => Err(ResultError::from(err))
     }
 }
