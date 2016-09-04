@@ -180,6 +180,13 @@ fn tst_get_result() {
     let result = result.unwrap();
     assert!(result.result_type == NumberType::Real);
     assert!(result.value.re - 18.2 < TEST_BOUND);
+    let result = get_result("f(3+5, arccos(0.7))", & mut context);
+    assert!(result.is_ok());
+    let result = result.ok().unwrap();
+    assert!(result.is_some());
+    let result = result.unwrap();
+    assert!(result.result_type == NumberType::Real);
+    assert!(result.value.re - 8.795398830 < TEST_BOUND);
     // reset context
     let mut context = MathContext::new();
 

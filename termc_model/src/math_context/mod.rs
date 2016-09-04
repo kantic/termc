@@ -950,12 +950,13 @@ impl<'a> MathContext {
     ///
     ///     let input2 = "f(0.5)";
     ///     let val_t = Token::new(TokenType::Number(NumberType::Real), String::from("0.5"), 4);
-    ///     let substituted = context.substitute_user_function_tree("f", vec![& val_t]).unwrap();
+    ///     let val_t_node: TreeNode<Token> = TreeNode::new(val_t);
+    ///     let substituted = context.substitute_user_function_tree("f", vec![& val_t_node]).unwrap();
     ///     assert!(substituted.content.get_value() == "f");
     ///     assert!(substituted.successors[0].content.get_value() == "0.5");
     /// }
     /// ```
-    pub fn substitute_user_function_tree(& self, repr: & str, args: Vec<& Token>) -> Option<TreeNode<Token>> {
+    pub fn substitute_user_function_tree(& self, repr: & str, args: Vec<& TreeNode<Token>>) -> Option<TreeNode<Token>> {
 
         let f_entry = self.user_functions.get(repr);
         if f_entry.is_none() {
@@ -968,7 +969,7 @@ impl<'a> MathContext {
             return None;
         }
 
-        let mut args_map : HashMap<String, & Token> = HashMap::new();
+        let mut args_map : HashMap<String, & TreeNode<Token>> = HashMap::new();
         for i in 0..args.len() {
             args_map.insert(f_args[i].clone(), args[i]);
         }
@@ -978,21 +979,39 @@ impl<'a> MathContext {
     }
 
     /// Substitutes all types of constant tokens of the specified tree with the tokens mapped by the specified map.
-    fn substitute_user_function_args(t: & mut TreeNode<Token>, m: & HashMap<String, & Token>) {
+    fn substitute_user_function_args(t: & mut TreeNode<Token>, m: & HashMap<String, & TreeNode<Token>>) {
+
         match t.content.get_type() {
             TokenType::Constant | TokenType::UserConstant | TokenType::Symbol(SymbolicTokenType::UnknownConstant) => {
                 let sub = m.get(t.content.get_value());
                 if sub.is_some() {
                     let sub = sub.cloned().unwrap();
                     let sub = sub.clone();
-                    t.content = sub;
+                    *t = sub;
                 }
             },
-            _ => ()
-        }
+            _ => {
+                for succ in t.successors.as_mut_slice() {
+                    match succ.content.get_type() {
+                        TokenType::Constant | TokenType::UserConstant | TokenType::Symbol(SymbolicTokenType::UnknownConstant) => {
+                            let sub = m.get(succ.content.get_value());
+                            if sub.is_some() {
+                                let sub = sub.cloned().unwrap();
+                                let sub = sub.clone();
+                                let succ_ref = succ.as_mut();
+                                *succ_ref = sub;
+                            }
+                            else {
+                                MathContext::substitute_user_function_args(succ, m);
+                            }
+                        },
 
-        for succ in t.successors.as_mut_slice() {
-            MathContext::substitute_user_function_args(succ, m);
+                        _ => {
+                            MathContext::substitute_user_function_args(succ, m);
+                        }
+                    }
+                }
+            }
         }
     }
 
