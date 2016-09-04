@@ -48,4 +48,9 @@ impl TerminalUI for TerminalHandle {
     fn print_str(& mut self, s: & str) {
         println!("{}", s);
     }
+
+    /// Prints newline on the terminal.
+    fn print_newline(& mut self) {
+        println!("");
+    }
 }

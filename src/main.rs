@@ -74,7 +74,7 @@ fn start_interactive() {
                 Ok(result) => {
                     match result {
                         Some(y) => terminal.print_result(& format!("{}", y)),
-                        None => terminal.print_str("\n\n")
+                        None => terminal.print_newline()
                     }
                 },
                 Err(err) => {

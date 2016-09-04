@@ -473,4 +473,9 @@ impl TerminalUI for TerminalHandle {
     fn print_str(& mut self, s: & str) {
         self.write_string(s, true);
     }
+
+    /// Prints newline on the terminal.
+    fn print_newline(& mut self) {
+        self.write_string("\n\n", true);
+    }
 }
