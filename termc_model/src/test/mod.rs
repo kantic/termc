@@ -599,7 +599,7 @@ fn tst_get_result() {
     let result = get_result("pi = 5", & mut context);
     assert!(result.is_err());
     let msg = format!("{}", result.err().unwrap());
-    assert!(msg == "Error: Expected new constant or function.\npi = 5\n ^~~~ Found: built-in expression \"pi\"");
+    assert!(msg == "Error: Expected new constant name or function name.\npi = 5\n ^~~~ Found: built-in expression \"pi\"");
 
     // test expectation error for recursive user function definition
     let _ = get_result("z(x) = z(x) + 2", & mut context);
@@ -607,5 +607,14 @@ fn tst_get_result() {
     assert!(result.is_err());
     let msg = format!("{}", result.err().unwrap());
     assert!(msg == "Error: Expected non-symbolic expression.\nz(x) = z(x) + 2\n       ^~~~ Found: symbolic expression \"z\"");
+    // reset context
+    let mut context = MathContext::new();
+
+    // test definition and use of function with wrong (symbolical) content
+    let _ = get_result("y(x) = z", & mut context);
+    let result = get_result("y(1)", & mut context);
+    assert!(result.is_err());
+    let msg = format!("{}", result.err().unwrap());
+    assert!(msg == "Error: The evaluation result is neither numerical nor an assignment.\nFound symbolical expression \"z\".");
     // context needs to be reset here if further tests are added
 }

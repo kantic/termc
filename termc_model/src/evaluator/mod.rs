@@ -22,8 +22,11 @@ pub enum EvaluationError {
     ExpectedError(ExpectedErrorTemplate),
     /// Error if a string could not be parsed to a float.
     /// Arguments: ParseFloatError instance.
-    NumberError(ParseFloatError)
-}
+    NumberError(ParseFloatError),
+    /// General evaluation errors.
+    /// Arguments: error message.
+    GeneralError(String)
+} // Todo: add GeneralError for all the cases where ExpectedError does not really fit
 
 impl fmt::Display for EvaluationError {
 
@@ -31,7 +34,8 @@ impl fmt::Display for EvaluationError {
     fn fmt(& self, f: & mut fmt::Formatter) -> fmt::Result {
         match *self {
             EvaluationError::ExpectedError(ref tmpl) => write!(f, "{}", tmpl),
-            EvaluationError::NumberError(ref e) => write!(f, "{}", e)
+            EvaluationError::NumberError(ref e) => write!(f, "{}", e),
+            EvaluationError::GeneralError(ref m) => write!(f, "{}", m)
         }
     }
 }
@@ -52,13 +56,30 @@ impl From<ParseFloatError> for EvaluationError {
     }
 }
 
+impl From<String> for EvaluationError {
+
+    /// Converts a String into an EvaluationError.
+    fn from(err: String) -> EvaluationError {
+        EvaluationError::GeneralError(err)
+    }
+}
+
+impl<'a> From<&'a str> for EvaluationError {
+
+    /// Converts a String into an EvaluationError.
+    fn from(err: & str) -> EvaluationError {
+        EvaluationError::GeneralError(String::from(err))
+    }
+}
+
 impl Error for EvaluationError {
 
     /// Returns the description of the error.
     fn description(& self) -> & str {
         match *self {
             EvaluationError::ExpectedError(_) => "Expected a symbol.",
-            EvaluationError::NumberError(_) => "A number could not be parsed."
+            EvaluationError::NumberError(_) => "A number could not be parsed.",
+            EvaluationError::GeneralError(_) => "An error occurred in the evaluation process."
         }
     }
 
@@ -66,7 +87,8 @@ impl Error for EvaluationError {
     fn cause(& self) -> Option<& Error> {
         match *self {
             EvaluationError::ExpectedError(_) => None,
-            EvaluationError::NumberError(ref err) => Some(err)
+            EvaluationError::NumberError(ref err) => Some(err),
+            EvaluationError::GeneralError(_) => None
         }
     }
 }
@@ -138,8 +160,7 @@ impl<'a> Evaluator<'a> {
                     },
 
                     _ => {
-                        Err(EvaluationError::from(ExpectedErrorTemplate::new(
-                            input, "function or operation", Some(format!("{}", sym.content)), sym.content.get_end_pos())))
+                        Err(EvaluationError::from(format!("Error: The evaluation result is neither numerical nor an assignment.\nFound symbolical expression \"{}\".", sym.content))) // FixMe: GeneralError
                     }
                 }
             }
@@ -287,7 +308,7 @@ impl<'a> Evaluator<'a> {
                                 let f_input = self.context.get_user_function_input(subtree.content.get_value()).unwrap_or(String::new());
                                 self.recursive_evaluate(& x, & f_input)
                             },
-                            None => Err(EvaluationError::from(ExpectedErrorTemplate::new(input, format!("function call of user defined function {}", subtree.content), Some(
+                            None => Err(EvaluationError::from(ExpectedErrorTemplate::new(input, "function call of user defined function", Some(
                                 format!("expression {}", subtree.content)), subtree.content.get_end_pos())))
                         }
                     }
@@ -326,7 +347,7 @@ impl<'a> Evaluator<'a> {
 
         if self.context.is_built_in_function(n.content.get_value()) || self.context.is_built_in_constant(n.content.get_value()) ||
             n.content.get_type() == TokenType::Constant {
-            Err(EvaluationError::from(ExpectedErrorTemplate::new(input, "new constant or function", Some(
+            Err(EvaluationError::from(ExpectedErrorTemplate::new(input, "new constant name or function name", Some(
                 format!("built-in expression \"{}\"", n.content)), n.content.get_end_pos())))
         }
         else {
