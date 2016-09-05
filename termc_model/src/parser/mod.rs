@@ -199,14 +199,7 @@ impl<'a> Parser<'a> {
 
         try!(self.skip_punc("("));
         let args = try!(self.parse_function_arg_list());
-        let pos = self.tokenizer.get_pos();
         try!(self.skip_punc(")"));
-
-        let n_args = self.context.get_function_arg_num(t.get_value()).unwrap_or(0);
-        if (args.len() as u32) != n_args && t.get_type() != TokenType::Symbol(SymbolicTokenType::UnknownFunction) {
-            return Err(ParseError::from(ExpectedErrorTemplate::new(self.tokenizer.get_input(),
-                                                                   format!("{} argument(s)", n_args), None, pos)));
-        }
 
         let mut ret = TreeNode::new(t);
         // add the function arguments as a subtrees to the function

@@ -190,6 +190,24 @@ fn tst_get_result() {
     // reset context
     let mut context = MathContext::new();
 
+    // test assignment of existing user function with less arguments
+    let _ = get_result("f(x, y) = x + y", & mut context);
+    let result = get_result("f(x) = x + 1", & mut context);
+    assert!(result.is_ok());
+    let result = result.ok().unwrap();
+    assert!(result.is_none());
+    let is_fun = context.is_user_function("f");
+    assert!(is_fun == true);
+    let result = get_result("f(3)", & mut context);
+    assert!(result.is_ok());
+    let result = result.ok().unwrap();
+    assert!(result.is_some());
+    let result = result.unwrap();
+    assert!(result.result_type == NumberType::Real);
+    assert!(result.value.re - 4.0 < TEST_BOUND);
+    // reset context
+    let mut context = MathContext::new();
+
     // test the definition of the ans constant
     // for this test, the context should be reset
     let result = get_result("15-8.78", & mut context);
@@ -586,7 +604,7 @@ fn tst_get_result() {
     let result = get_result("pow(5)", & mut context);
     assert!(result.is_err());
     let msg = format!("{}", result.err().unwrap());
-    assert!(msg == "Error: Expected 2 argument(s).\npow(5)\n     ^~~~");
+    assert!(msg == "Error: Expected 2 argument(s).\npow(5)\n  ^~~~ Found: 1 argument(s)");
 
 
     // test expectation of argument in function argument list
@@ -616,5 +634,15 @@ fn tst_get_result() {
     assert!(result.is_err());
     let msg = format!("{}", result.err().unwrap());
     assert!(msg == "Error: The evaluation result is neither numerical nor an assignment.\nFound symbolical expression \"z\".");
+    // reset context
+    let mut context = MathContext::new();
+
+    // test definition of user function with equal arguments
+    let result = get_result("h(x, y, x) = x^2+y", & mut context);
+    assert!(result.is_err());
+    let msg = format!("{}", result.err().unwrap());
+    assert!(msg == "Error: Expected distinct arguments.\nh(x, y, x) = x^2+y\n^~~~ Found: function definition with partly equal arguments");
     // context needs to be reset here if further tests are added
+
+
 }

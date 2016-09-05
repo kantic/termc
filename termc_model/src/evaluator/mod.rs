@@ -263,8 +263,8 @@ impl<'a> Evaluator<'a> {
                 let n_successors = subtree.successors.len() as u32;
                 let n_args = self.context.get_function_arg_num(subtree.content.get_value()).unwrap();
                 if n_successors != n_args {
-                    return Err(EvaluationError::from(ExpectedErrorTemplate::new(input, format!("{} arguments", n_args),
-                                                                                Some(format!("{} arguments", n_successors)),
+                    return Err(EvaluationError::from(ExpectedErrorTemplate::new(input, format!("{} argument(s)", n_args),
+                                                                                Some(format!("{} argument(s)", n_successors)),
                                                                                 subtree.content.get_end_pos())));
                 }
 
