@@ -1,7 +1,7 @@
 # termc
 
 ## Introduction and Goals
-**termc** is a calculator for the command line.\
+**termc** is a calculator for the command line.
 The goal of this project is to provide an *easy-to-use and intuitive* command line calculator with a basic range of functions.
 It supports the basic operations ("+", "-", "*", "/" and "^") as well as the following built-in mathematical functions:
 - cos
@@ -28,7 +28,7 @@ Futhermore, the following built-in constants are supported:
 
 ## Specialities
 ### Complex numbers
-**termc** supports complex numbers.\
+**termc** supports complex numbers.
 Example:
 ```sh
 $ termc
@@ -37,7 +37,7 @@ ans = -9.654125476854839+2.841692295606352i
 ```
 
 ### User-defined constants
-**termc** supports the definition of custom constants.\
+**termc** supports the definition of custom constants.
 Example:
 ```sh
 $ termc
@@ -48,7 +48,7 @@ ans = -0.7071067811865477
 ```
 
 ### User-defined functions
-**termc** supports the definition of custom constants.\
+**termc** supports the definition of custom constants.
 Example:
 ```sh
 $ termc
@@ -79,7 +79,7 @@ cis(pi)
 ```
 
 ### MultiOS
-**termc** compilation has been tested on both linux (Debian 8) and Windows (Windows 10).\
+**termc** compilation has been tested on both linux (Debian 8) and Windows (Windows 10).
 All unix-like operating systems on which rust is available should work, too!
 
 ## Modes of Operation
