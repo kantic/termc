@@ -26,7 +26,7 @@ pub enum EvaluationError {
     /// General evaluation errors.
     /// Arguments: error message.
     GeneralError(String)
-} // Todo: add GeneralError for all the cases where ExpectedError does not really fit
+}
 
 impl fmt::Display for EvaluationError {
 
@@ -159,8 +159,18 @@ impl<'a> Evaluator<'a> {
                         Ok(None)
                     },
 
+                    TokenType::Symbol(SymbolicTokenType::UnknownConstant) => {
+                        Err(EvaluationError::from(ExpectedErrorTemplate::new(input, "built-in or user defined constant", Some(
+                            format!("unknown constant \"{}\"", sym.content)), sym.content.get_end_pos())))
+                    },
+
+                    TokenType::Symbol(SymbolicTokenType::UnknownFunction) => {
+                        Err(EvaluationError::from(ExpectedErrorTemplate::new(input, "built-in or user defined function", Some(
+                            format!("unknown function \"{}(...)\"", sym.content)), sym.content.get_end_pos())))
+                    },
+
                     _ => {
-                        Err(EvaluationError::from(format!("Error: The evaluation result is neither numerical nor an assignment.\nFound symbolical expression \"{}\".", sym.content))) // FixMe: GeneralError
+                        Err(EvaluationError::from(format!("Error: The evaluation result is neither numerical nor an assignment.\nFound symbolical expression \"{}\".", sym.content)))
                     }
                 }
             }
@@ -207,6 +217,7 @@ impl<'a> Evaluator<'a> {
                     let left_val_sym = try!(self.error_if_built_in(subtree.successors[0].as_ref(), input));
                     match left_val_sym.content.get_type() {
                         TokenType::Symbol(SymbolicTokenType::UnknownConstant) | TokenType::UserConstant => {
+                            self.context.remove_user_constant(left_val_sym.content.get_value());
                             let right_val = try!(self.recursive_evaluate(subtree.successors[1].as_ref(), input));
                             let right_val_num = try!(Evaluator::error_if_symbolic(right_val, input));
                             self.context.add_user_constant(left_val_sym.content.get_value(), right_val_num);
@@ -215,7 +226,9 @@ impl<'a> Evaluator<'a> {
 
                         TokenType::Symbol(SymbolicTokenType::UnknownFunction) | TokenType::UserFunction => {
                             let f_name = left_val_sym.content.get_value();
+                            self.context.remove_user_function(f_name);
                             let f_args = try!(Evaluator::get_function_args(left_val_sym, input));
+                            try!(self.check_function_definition(subtree.successors[1].as_ref(), & f_args, input));
                             self.context.add_user_function(f_name, subtree.successors[1].as_ref().clone(), f_args, input);
                             Ok(EvaluationResult::from(subtree))
                         },
@@ -284,9 +297,11 @@ impl<'a> Evaluator<'a> {
                     FunctionType::Cosh => Ok(EvaluationResult::from(MathContext::function_cosh(& args[0]))),
                     FunctionType::Sinh => Ok(EvaluationResult::from(MathContext::function_sinh(& args[0]))),
                     FunctionType::Tanh => Ok(EvaluationResult::from(MathContext::function_tanh(& args[0]))),
+                    FunctionType::Coth => Ok(EvaluationResult::from(MathContext::function_coth(& args[0]))),
                     FunctionType::ArcCosh => Ok(EvaluationResult::from(MathContext::function_arccosh(& args[0]))),
                     FunctionType::ArcSinh => Ok(EvaluationResult::from(MathContext::function_arcsinh(& args[0]))),
                     FunctionType::ArcTanh => Ok(EvaluationResult::from(MathContext::function_arctanh(& args[0]))),
+                    FunctionType::ArcCoth => Ok(EvaluationResult::from(MathContext::function_arccoth(& args[0]))),
                     FunctionType::Sqrt => Ok(EvaluationResult::from(MathContext::function_sqrt(& args[0]))),
                     FunctionType::Ln => Ok(EvaluationResult::from(MathContext::function_ln(& args[0]))),
                     FunctionType::Pow => Ok(EvaluationResult::from(MathContext::operation_pow(& args[0], & args[1]))),
@@ -335,9 +350,20 @@ impl<'a> Evaluator<'a> {
     fn error_if_symbolic(res: EvaluationResult, input: & str) -> Result<MathResult, EvaluationError> {
         match res {
             EvaluationResult::Numerical(x) => Ok(x),
-            EvaluationResult::Symbolical(n) => Err(EvaluationError::from(
-                ExpectedErrorTemplate::new(input, "non-symbolic expression", Some(format!("symbolic expression \"{}\"", n.content)),
-                                           n.content.get_end_pos())))
+            EvaluationResult::Symbolical(n) => {
+
+                match n.content.get_type() {
+
+                    TokenType::Symbol(SymbolicTokenType::UnknownConstant) => Err(EvaluationError::from(ExpectedErrorTemplate::new(
+                        input, "built-in or user defined constant", Some(format!("unknown constant \"{}\"", n.content)), n.content.get_end_pos()))),
+
+                    TokenType::Symbol(SymbolicTokenType::UnknownFunction) => Err(EvaluationError::from(ExpectedErrorTemplate::new(
+                        input, "built-in or user defined function", Some(format!("unknown function \"{}(...)\"", n.content)), n.content.get_end_pos()))),
+
+                    _ => Err(EvaluationError::from(ExpectedErrorTemplate::new(
+                        input, "non-symbolic expression", Some(format!("symbolic expression \"{}\"", n.content)),n.content.get_end_pos())))
+                }
+            }
         }
     }
 
@@ -365,6 +391,13 @@ impl<'a> Evaluator<'a> {
                     format!("expression \"{}\"", n.content)), n.content.get_end_pos())))
             }
 
+            if succ.content.get_type() == TokenType::Number(NumberType::Real) || succ.content.get_type() == TokenType::Number(NumberType::Complex) ||
+                succ.content.get_type() == TokenType::Function || succ.content.get_type() == TokenType::UserFunction ||
+                succ.content.get_type() == TokenType::Symbol(SymbolicTokenType::UnknownFunction){
+                return Err(EvaluationError::from(ExpectedErrorTemplate::new(input, "symbolic function argument", Some(
+                    format!("expression \"{}\"", succ.content)), succ.content.get_end_pos())))
+            }
+
             args.push(String::from(succ.content.get_value()));
             args_set.insert(String::from(succ.content.get_value()));
         }
@@ -375,6 +408,24 @@ impl<'a> Evaluator<'a> {
         }
         else {
             Ok(args)
+        }
+    }
+
+    /// Checks a user function definition tree.
+    /// Checks if every symbol is defined.
+    fn check_function_definition(& self, n: & TreeNode<Token>, args: & Vec<String>, input: & str) -> Result<(), EvaluationError> {
+        if !(n.content.get_type() == TokenType::Number(NumberType::Real) || n.content.get_type() == TokenType::Number(NumberType::Complex)
+            || self.context.is_constant(n.content.get_value()) || self.context.is_function(n.content.get_value()) || self.context.is_operation(n.content.get_value())
+            || args.iter().any(|x| x == n.content.get_value())) {
+            Err(EvaluationError::from(ExpectedErrorTemplate::new(input, "non-symbolic expression", Some(
+                    format!("symbolic expression \"{}\"", n.content)), n.content.get_end_pos())))
+        }
+        else {
+            for succ in  &n.successors {
+                try!(self.check_function_definition(succ, args, input));
+            }
+
+            Ok(())
         }
     }
 }

@@ -356,6 +356,15 @@ fn tst_get_result() {
     assert!(result.result_type == NumberType::Real);
     assert!(result.value.re - 1.328358237 < TEST_BOUND);
 
+    // test arccosh function
+    let result = get_result("arccosh(1.7897)", & mut context);
+    assert!(result.is_ok());
+    let result = result.ok().unwrap();
+    assert!(result.is_some());
+    let result = result.unwrap();
+    assert!(result.result_type == NumberType::Real);
+    assert!(result.value.re - 1.186000090 < TEST_BOUND);
+
     // test sinh function
     let result = get_result("sinh(pi+9/3)", & mut context);
     assert!(result.is_ok());
@@ -365,6 +374,15 @@ fn tst_get_result() {
     assert!(result.result_type == NumberType::Real);
     assert!(result.value.re - 232.395542404 < TEST_BOUND);
 
+    // test arcsinh function
+    let result = get_result("arcsinh(0.5)", & mut context);
+    assert!(result.is_ok());
+    let result = result.ok().unwrap();
+    assert!(result.is_some());
+    let result = result.unwrap();
+    assert!(result.result_type == NumberType::Real);
+    assert!(result.value.re - 0.481211825 < TEST_BOUND);
+
     // test tanh function
     let result = get_result("tanh(e)", & mut context);
     assert!(result.is_ok());
@@ -373,6 +391,33 @@ fn tst_get_result() {
     let result = result.unwrap();
     assert!(result.result_type == NumberType::Real);
     assert!(result.value.re - 0.991328915 < TEST_BOUND);
+
+    // test arctanh function
+    let result = get_result("arctanh(-0.233)", & mut context);
+    assert!(result.is_ok());
+    let result = result.ok().unwrap();
+    assert!(result.is_some());
+    let result = result.unwrap();
+    assert!(result.result_type == NumberType::Real);
+    assert!(result.value.re + 0.237359350 < TEST_BOUND);
+
+    // test coth function
+    let result = get_result("coth(0.887)", & mut context);
+    assert!(result.is_ok());
+    let result = result.ok().unwrap();
+    assert!(result.is_some());
+    let result = result.unwrap();
+    assert!(result.result_type == NumberType::Real);
+    assert!(result.value.re - 1.408631623 < TEST_BOUND);
+
+    // test arccoth function
+    let result = get_result("arccoth(-1.7)", & mut context);
+    assert!(result.is_ok());
+    let result = result.ok().unwrap();
+    assert!(result.is_some());
+    let result = result.unwrap();
+    assert!(result.result_type == NumberType::Real);
+    assert!(result.value.re + 0.674963358 < TEST_BOUND);
 
     // test exp function
     let result = get_result("exp(1)", & mut context);
@@ -563,13 +608,13 @@ fn tst_get_result() {
     let result = get_result("3-cis(pi/2)+sin(0)", & mut context);
     assert!(result.is_err());
     let msg = format!("{}", result.err().unwrap());
-    assert!(msg == "Error: Expected non-symbolic expression.\n3-cis(pi/2)+sin(0)\n    ^~~~ Found: symbolic expression \"cis\"");
+    assert!(msg == "Error: Expected built-in or user defined function.\n3-cis(pi/2)+sin(0)\n    ^~~~ Found: unknown function \"cis(...)\"");
 
     // test unknown constant
     let result = get_result("5*3+cos(py)-7^1", & mut context);
     assert!(result.is_err());
     let msg = format!("{}", result.err().unwrap());
-    assert!(msg == "Error: Expected non-symbolic expression.\n5*3+cos(py)-7^1\n         ^~~~ Found: symbolic expression \"py\"");
+    assert!(msg == "Error: Expected built-in or user defined constant.\n5*3+cos(py)-7^1\n         ^~~~ Found: unknown constant \"py\"");
 
     // test expectation of unary operation
     let result = get_result("5+--*2.7", & mut context);
@@ -620,8 +665,7 @@ fn tst_get_result() {
     assert!(msg == "Error: Expected new constant name or function name.\npi = 5\n ^~~~ Found: built-in expression \"pi\"");
 
     // test expectation error for recursive user function definition
-    let _ = get_result("z(x) = z(x) + 2", & mut context);
-    let result = get_result("z(1)", & mut context);
+    let result = get_result("z(x) = z(x) + 2", & mut context);
     assert!(result.is_err());
     let msg = format!("{}", result.err().unwrap());
     assert!(msg == "Error: Expected non-symbolic expression.\nz(x) = z(x) + 2\n       ^~~~ Found: symbolic expression \"z\"");
@@ -629,11 +673,10 @@ fn tst_get_result() {
     let mut context = MathContext::new();
 
     // test definition and use of function with wrong (symbolical) content
-    let _ = get_result("y(x) = z", & mut context);
-    let result = get_result("y(1)", & mut context);
+    let result = get_result("y(x) = z", & mut context);
     assert!(result.is_err());
     let msg = format!("{}", result.err().unwrap());
-    assert!(msg == "Error: The evaluation result is neither numerical nor an assignment.\nFound symbolical expression \"z\".");
+    assert!(msg == "Error: Expected non-symbolic expression.\ny(x) = z\n       ^~~~ Found: symbolic expression \"z\"");
     // reset context
     let mut context = MathContext::new();
 

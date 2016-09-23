@@ -31,6 +31,7 @@ pub enum FunctionType {
     Sinh,
     Cosh,
     Tanh,
+    Coth,
     Sqrt,
     Ln,
     Pow,
@@ -42,6 +43,7 @@ pub enum FunctionType {
     ArcCosh,
     ArcSinh,
     ArcTanh,
+    ArcCoth,
     UserFunction
 }
 
@@ -108,6 +110,7 @@ impl<'a> MathContext {
         functions.insert(String::from("cosh"), (FunctionType::Cosh, 1));
         functions.insert(String::from("sinh"), (FunctionType::Sinh, 1));
         functions.insert(String::from("tanh"), (FunctionType::Tanh, 1));
+        functions.insert(String::from("coth"), (FunctionType::Coth, 1));
 
         functions.insert(String::from("arccos"), (FunctionType::ArcCos, 1));
         functions.insert(String::from("acos"), (FunctionType::ArcCos, 1));
@@ -124,6 +127,7 @@ impl<'a> MathContext {
         functions.insert(String::from("arcsinh"), (FunctionType::ArcSinh, 1));
         functions.insert(String::from("atanh"), (FunctionType::ArcTanh, 1));
         functions.insert(String::from("arctanh"), (FunctionType::ArcTanh, 1));
+        functions.insert(String::from("arccoth"), (FunctionType::ArcCoth, 1));
 
         functions.insert(String::from("exp"), (FunctionType::Exp, 1));
         functions.insert(String::from("sqrt"), (FunctionType::Sqrt, 1));
@@ -205,7 +209,7 @@ impl<'a> MathContext {
     /// assert!(is_func == true);
     /// ```
     pub fn is_function(& self, s: & str) -> bool {
-        self.functions.contains_key(s) || self.user_constants.contains_key(s)
+        self.functions.contains_key(s) || self.user_functions.contains_key(s)
     }
 
     /// Checks whether the specified string is a built-in function.
@@ -649,12 +653,19 @@ impl<'a> MathContext {
     /// assert!(MathContext::function_arccos(& arg).value.re - 1.0_f64 < 10e-10_f64);
     /// ```
     pub fn function_arccos(arg: & MathResult) -> MathResult {
-        let mut t = arg.result_type.clone();
-        if t == NumberType::Real {
-            if !(arg.value.re <= 1.0 && arg.value.re >= -1.0) {
-                t = NumberType::Complex;
-            }
-        }
+        let t : NumberType = match arg.result_type {
+            NumberType::Real => {
+                if !(arg.value.re <= 1.0 && arg.value.re >= -1.0) {
+                    NumberType::Complex
+                }
+                else {
+                    NumberType::Real
+                }
+            },
+
+            NumberType::Complex => NumberType::Complex
+        };
+
         MathResult::new(t, arg.value.acos())
     }
 
@@ -670,12 +681,19 @@ impl<'a> MathContext {
     /// assert!(MathContext::function_arcsin(& arg).value.re - 1.0_f64 < 10e-10_f64);
     /// ```
     pub fn function_arcsin(arg: & MathResult) -> MathResult {
-        let mut t = arg.result_type.clone();
-        if t == NumberType::Real {
-            if !(arg.value.re <= 1.0 && arg.value.re >= -1.0) {
-                t = NumberType::Complex;
-            }
-        }
+        let t : NumberType = match arg.result_type {
+            NumberType::Real => {
+                if !(arg.value.re <= 1.0 && arg.value.re >= -1.0) {
+                    NumberType::Complex
+                }
+                else {
+                    NumberType::Real
+                }
+            },
+
+            NumberType::Complex => NumberType::Complex
+        };
+
         MathResult::new(t, arg.value.asin())
     }
 
@@ -732,8 +750,8 @@ impl<'a> MathContext {
     /// use termc_model::math_context::MathContext;
     /// use termc_model::math_result::MathResult;
     ///
-    /// let arg = MathResult::from(0.0_f64.tan());
-    /// assert!(MathContext::function_arctan(& arg).value.re - 0.0_f64 < 10e-10_f64);
+    /// let arg = MathResult::from(0.5_f64.sinh());
+    /// assert!(MathContext::function_arctan(& arg).value.re - 0.5_f64 < 10e-10_f64);
     /// ```
     pub fn function_sinh(arg: & MathResult) -> MathResult {
         MathResult::new(arg.result_type.clone(), arg.value.sinh())
@@ -747,11 +765,26 @@ impl<'a> MathContext {
     /// use termc_model::math_context::MathContext;
     /// use termc_model::math_result::MathResult;
     ///
-    /// let arg = MathResult::from(0.0_f64.tan());
-    /// assert!(MathContext::function_arctan(& arg).value.re - 0.0_f64 < 10e-10_f64);
+    /// let arg = MathResult::from(0.7_f64.tanh());
+    /// assert!(MathContext::function_arctanh(& arg).value.re - 0.7_f64 < 10e-10_f64);
     /// ```
     pub fn function_tanh(arg: & MathResult) -> MathResult {
         MathResult::new(arg.result_type.clone(), arg.value.tanh())
+    }
+
+    /// Implements the mathematical hyperbolic cotangent function.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use termc_model::math_context::MathContext;
+    /// use termc_model::math_result::MathResult;
+    ///
+    /// let arg = MathResult::from(1.0_f64.cosh() / 1.0_f64.sinh());
+    /// assert!(MathContext::function_arccoth(& arg).value.re - 1.0_f64 < 10e-10_f64);
+    /// ```
+    pub fn function_coth(arg: & MathResult) -> MathResult {
+        MathResult::new(arg.result_type.clone(), arg.value.cosh() / arg.value.sinh())
     }
 
     /// Implements the mathematical inverse hyperbolic cosine function.
@@ -766,7 +799,20 @@ impl<'a> MathContext {
     /// assert!(MathContext::function_arccosh(& arg).value.re - 1.0_f64 < 10e-10_f64);
     /// ```
     pub fn function_arccosh(arg: & MathResult) -> MathResult {
-        MathResult::new(arg.result_type.clone(), arg.value.acosh())
+        let t : NumberType = match arg.result_type {
+            NumberType::Real => {
+                if !(arg.value.re >= 1.0) {
+                    NumberType::Complex
+                }
+                else {
+                    NumberType::Real
+                }
+            },
+
+            NumberType::Complex => NumberType::Complex
+        };
+
+        MathResult::new(t, arg.value.acosh())
     }
 
     /// Implements the mathematical inverse hyperbolic sine function.
@@ -796,7 +842,49 @@ impl<'a> MathContext {
     /// assert!(MathContext::function_arctanh(& arg).value.re - 1.0_f64 < 10e-10_f64);
     /// ```
     pub fn function_arctanh(arg: & MathResult) -> MathResult {
-        MathResult::new(arg.result_type.clone(), arg.value.atanh())
+        let t : NumberType = match arg.result_type {
+            NumberType::Real => {
+                if !(arg.value.re > -1.0 && arg.value.re < 1.0) {
+                    NumberType::Complex
+                }
+                else {
+                    NumberType::Real
+                }
+            },
+
+            NumberType::Complex => NumberType::Complex
+        };
+
+        MathResult::new(t, arg.value.atanh())
+    }
+
+    /// Implements the mathematical inverse hyperbolic cotangent function.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use termc_model::math_context::MathContext;
+    /// use termc_model::math_result::MathResult;
+    ///
+    /// let arg = MathResult::from(0.5_f64.tanh());
+    /// assert!(MathContext::function_arccoth(& arg).value.re - 0.549306144_f64 < 10e-10_f64);
+    /// ```
+    pub fn function_arccoth(arg: & MathResult) -> MathResult {
+        let t : NumberType = match arg.result_type {
+            NumberType::Real => {
+                if !(arg.value.re > 1.0 || arg.value.re < -1.0) {
+                    NumberType::Complex
+                }
+                else {
+                    NumberType::Real
+                }
+            },
+
+            NumberType::Complex => NumberType::Complex
+        };
+
+        let temp = MathResult::new(NumberType::Complex, -num::Complex::i() * arg.value);
+        MathResult::new(t, 1.0 / num::Complex::i() * MathContext::function_arccot(& temp).value)
     }
 
     /// Implements the mathematical exponential function.
@@ -827,7 +915,20 @@ impl<'a> MathContext {
     /// assert!(MathContext::function_ln(& arg).value.re - 5.0_f64 < 10e-10_f64);
     /// ```
     pub fn function_ln(arg: & MathResult) -> MathResult {
-        MathResult::new(arg.result_type.clone(), arg.value.ln())
+        let t : NumberType = match arg.result_type {
+            NumberType::Real => {
+                if arg.value.re < 0.0 {
+                    NumberType::Complex
+                }
+                else {
+                    NumberType::Real
+                }
+            },
+
+            NumberType::Complex => NumberType::Complex
+        };
+
+        MathResult::new(t, arg.value.ln())
     }
 
     /// Implements the mathematical inverse hyperbolic sine function.
@@ -842,7 +943,20 @@ impl<'a> MathContext {
     /// assert!(MathContext::function_sqrt(& arg).value.re - 5.0_f64 < 10e-10_f64);
     /// ```
     pub fn function_sqrt(arg: & MathResult) -> MathResult {
-        MathResult::new(arg.result_type.clone(), arg.value.sqrt())
+        let t : NumberType = match arg.result_type {
+            NumberType::Real => {
+                if arg.value.re < 0.0 {
+                    NumberType::Complex
+                }
+                else {
+                    NumberType::Real
+                }
+            },
+
+            NumberType::Complex => NumberType::Complex
+        };
+
+        MathResult::new(t, arg.value.sqrt())
     }
 
     /// Returns the result type for a mathematical expression with the given operands.
@@ -896,6 +1010,38 @@ impl<'a> MathContext {
     /// use num::complex::Complex;
     /// use termc_model::math_context::MathContext;
     /// use termc_model::math_result::MathResult;
+    /// use termc_model::token::NumberType;
+    ///
+    /// fn main() {
+    ///     let mut context = MathContext::new();
+    ///     context.add_user_constant("c", MathResult::new(NumberType::Real, Complex::new(4.1, 0.0)));
+    ///
+    ///     let is_built_in_const = context.is_user_constant("c");
+    ///     assert!(is_built_in_const == true);
+    ///     let constr = context.get_constant_value("c").unwrap();
+    ///     assert!(constr.value.re - 4.1 < 10e-10);
+    ///
+    ///     context.remove_user_constant("c");
+    ///     let is_user_const = context.is_user_constant("c");
+    ///     assert!(is_user_const == false);
+    /// }
+    /// ```
+    pub fn remove_user_constant<S>(& mut self, repr: S) where S: Into<String> {
+        let repr_string = repr.into();
+        self.user_constants.remove(& repr_string);
+    }
+
+    /// Adds the specified user function to the mathematical context.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// extern crate num;
+    /// extern crate termc_model;
+    ///
+    /// use num::complex::Complex;
+    /// use termc_model::math_context::MathContext;
+    /// use termc_model::math_result::MathResult;
     /// use termc_model::token::{Token, TokenType, SymbolicTokenType, NumberType};
     /// use termc_model::tree::TreeNode;
     ///
@@ -919,6 +1065,45 @@ impl<'a> MathContext {
         let repr_string : String = repr.into();
         self.user_functions.insert(repr_string.clone(), (t, vars, FunctionType::UserFunction));
         self.user_function_inputs.insert(repr_string, input.into());
+    }
+
+    /// Removes the specified user function to the mathematical context.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// extern crate num;
+    /// extern crate termc_model;
+    ///
+    /// use num::complex::Complex;
+    /// use termc_model::math_context::MathContext;
+    /// use termc_model::math_result::MathResult;
+    /// use termc_model::token::{Token, TokenType, SymbolicTokenType, NumberType};
+    /// use termc_model::tree::TreeNode;
+    ///
+    /// fn main() {
+    ///     let mut context = MathContext::new();
+    ///
+    ///     let mut input = "f(x) = x";
+    ///     let mut f = Token::new(TokenType::Symbol(SymbolicTokenType::UnknownFunction), String::from("f"), 0);
+    ///     let mut f_node: TreeNode<Token> = TreeNode::new(f);
+    ///     let mut x = Token::new(TokenType::Symbol(SymbolicTokenType::UnknownConstant), String::from("x"), 2);
+    ///     let mut x_node: TreeNode<Token> = TreeNode::new(x);
+    ///     f_node.successors.push(Box::new(x_node));
+    ///     context.add_user_function("f", f_node, vec![String::from("x")], input);
+    ///
+    ///     let is_built_in_fun = context.is_user_function("f");
+    ///     assert!(is_built_in_fun == true);
+    ///
+    ///     context.remove_user_function("f");
+    ///     let is_built_in_fun = context.is_user_function("f");
+    ///     assert!(is_built_in_fun == false);
+    /// }
+    /// ```
+    pub fn remove_user_function<S1>(& mut self, repr: S1) where S1: Into<String> {
+        let repr_string: String = repr.into();
+        self.user_functions.remove(& repr_string);
+        self.user_function_inputs.remove(& repr_string);
     }
 
     /// Substitutes the arguments of the specified user function with the specified tokens.

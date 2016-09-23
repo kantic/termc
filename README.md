@@ -15,6 +15,11 @@ It supports the basic operations ("+", "-", "*", "/" and "^") as well as the fol
 - cosh
 - sinh
 - tanh
+- coth
+- acosh
+- asinh
+- atanh
+- acoth
 - ln
 - exp
 - sqrt
