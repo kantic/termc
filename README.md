@@ -53,7 +53,7 @@ ans = -0.7071067811865477
 ```
 
 ### User-defined functions
-**termc** supports the definition of custom constants.
+**termc** supports the definition of custom functions.
 Example:
 ```sh
 $ termc
