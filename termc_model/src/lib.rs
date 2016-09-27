@@ -1,10 +1,12 @@
 extern crate num;
+extern crate serde_json;
 
 pub mod math_context;
 pub mod math_result;
 pub mod token;
 pub mod result_error;
 pub mod tree;
+pub mod serialization;
 
 mod parser;
 mod evaluator;

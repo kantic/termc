@@ -1,13 +1,16 @@
 
 extern crate num;
+extern crate serde_json;
 
 use std::f64;
 use std::collections::{HashMap, HashSet};
 use num::complex::Complex;
+use serde_json::{Value, Map};
 use token::{Token, TokenType, SymbolicTokenType};
 use token::NumberType;
 use math_result::MathResult;
 use tree::TreeNode;
+use serialization::{Serialization, SerializationError};
 
 /// Defines the types of supported operations.
 #[derive(Clone, PartialEq)]
@@ -58,7 +61,7 @@ pub struct MathContext {
     /// Set of functions (function type and number of arguments).
     functions: HashMap<String, (FunctionType, u32)>,
     /// Set of user defined functions (the function expression tree and it's variables).
-    user_functions: HashMap<String, (TreeNode<Token>, Vec<String>, FunctionType)>,
+    user_functions: HashMap<String, (TreeNode<Token>, Vec<String>)>,
     /// The user inputs that define user functions.
     user_function_inputs: HashMap<String, String>,
     /// Map of built-in constants (constant representation and value).
@@ -67,6 +70,178 @@ pub struct MathContext {
     user_constants: HashMap<String, MathResult>,
     /// Set of punctuation symbols.
     punctuation : HashSet<char>
+}
+
+impl Serialization for MathContext {
+
+    /// Generates the JSON object for serialization.
+    fn build_value(& self) -> Value {
+        let mut m : Map<String, Value> = Map::new();
+        let mut user_constants_val : Vec<Value> = Vec::new();
+        for (key, ref value) in self.user_constants.iter() {
+            let mut entry: Vec<Value> = Vec::new();
+            entry.push(Value::String(key.clone()));
+            entry.push(value.build_value());
+            user_constants_val.push(Value::Array(entry));
+        }
+
+        let mut user_functions_val : Vec<Value> = Vec::new();
+        for (key, ref value) in self.user_functions.iter() {
+            let mut entry: Vec<Value> = Vec::new();
+            entry.push(Value::String(key.clone()));
+            entry.push(value.0.build_value());
+            let mut array : Vec<Value> = Vec::new();
+            for elem in value.1.iter() {
+                array.push(Value::String(elem.clone()));
+            }
+            entry.push(Value::Array(array));
+            user_functions_val.push(Value::Array(entry));
+        }
+
+        let mut user_function_inputs_val : Vec<Value> = Vec::new();
+        for (key, ref value) in self.user_function_inputs.iter() {
+            let mut entry: Vec<Value> = Vec::new();
+            entry.push(Value::String(key.clone()));
+            entry.push(Value::String(value.to_owned().clone()));
+            user_function_inputs_val.push(Value::Array(entry));
+        }
+
+        m.insert(String::from("userConstants"), Value::Array(user_constants_val));
+        m.insert(String::from("userFunctions"), Value::Array(user_functions_val));
+        m.insert(String::from("userFunctionInputs"), Value::Array(user_function_inputs_val));
+        Value::Object(m)
+    }
+
+    /// Generates a deserialized instance from the specified JSON object.
+    fn build_instance(v: Value) -> Result<Self, SerializationError> {
+
+        let mut m = match v {
+            Value::Object(map) => map,
+            _ => return Err(SerializationError::ValueTypeError(String::from("Object")))
+        };
+
+        let user_constants_val = match m.remove("userConstants") {
+            Some(v) => v,
+            None => return Err(SerializationError::MissingValueError(String::from("MathContext: userConstants")))
+        };
+
+        let user_functions_val = match m.remove("userFunctions") {
+            Some(v) => v,
+            None => return Err(SerializationError::MissingValueError(String::from("MathContext: userFunctions")))
+        };
+
+        let user_function_inputs_val = match m.remove("userFunctionInputs") {
+            Some(v) => v,
+            None => return Err(SerializationError::MissingValueError(String::from("MathContext: userFunctionInputs")))
+        };
+
+        let mut user_constants : HashMap<String, MathResult> = HashMap::new();
+        match user_constants_val {
+            Value::Array(vec) => {
+                for entry in vec {
+                    match entry {
+                        Value::Array(mut elements) => {
+                            let value = elements.pop().unwrap_or(Value::Null);
+                            let key = elements.pop().unwrap_or(Value::Null);
+                            let key = match key {
+                                Value::String(str) => str,
+                                _ => return Err(SerializationError::ValueTypeError(String::from("String")))
+                            };
+                            let value = try!(MathResult::build_instance(value));
+
+                            user_constants.insert(key, value);
+                        },
+
+                        _ => return Err(SerializationError::ValueTypeError(String::from("Object")))
+                    }
+                }
+            },
+
+            _ => return Err(SerializationError::ValueTypeError(String::from("Array")))
+        }
+
+        let mut user_functions : HashMap<String, (TreeNode<Token>, Vec<String>)> = HashMap::new();
+        match user_functions_val {
+            Value::Array(vec) => {
+                for entry in vec {
+                    match entry {
+                        Value::Array(mut elements) => {
+                            let vars = elements.pop().unwrap_or(Value::Null);
+                            let treenode = elements.pop().unwrap_or(Value::Null);
+                            let key = elements.pop().unwrap_or(Value::Null);
+
+                            let key = match key {
+                                Value::String(str) => str,
+                                _ => return Err(SerializationError::ValueTypeError(String::from("String")))
+                            };
+
+                            let treenode = try!(TreeNode::build_instance(treenode));
+                            let vars = match vars {
+                                Value::Array(entries) => {
+                                    let mut v : Vec<String> = Vec::new();
+                                    for var in entries {
+                                        match var {
+                                            Value::String(str) => v.push(str),
+                                            _ => return Err(SerializationError::ValueTypeError(String::from("String")))
+                                        }
+                                    }
+
+                                    v
+                                },
+
+                                _ => return Err(SerializationError::ValueTypeError(String::from("Array")))
+                            };
+
+                            user_functions.insert(key, (treenode, vars));
+                        },
+
+                        _ => return Err(SerializationError::ValueTypeError(String::from("Array")))
+                    }
+                }
+            },
+
+            _ => return Err(SerializationError::ValueTypeError(String::from("Array")))
+        }
+
+        let mut user_function_inputs : HashMap<String, String> = HashMap::new();
+        match user_function_inputs_val {
+            Value::Array(vec) => {
+                for entry in vec {
+                    match entry {
+                        Value::Array(mut elements) => {
+                            let input = elements.pop().unwrap_or(Value::Null);
+                            let key = elements.pop().unwrap_or(Value::Null);
+
+                            let key = match key {
+                                Value::String(str) => str,
+
+                                _ => return Err(SerializationError::ValueTypeError(String::from("String")))
+                            };
+
+                            let input = match input {
+                                Value::String(str) => str,
+
+                                _ => return Err(SerializationError::ValueTypeError(String::from("String")))
+                            };
+
+                            user_function_inputs.insert(key, input);
+                        },
+
+                        _ => return Err(SerializationError::ValueTypeError(String::from("Array")))
+                    }
+                }
+            },
+
+            _ => return Err(SerializationError::ValueTypeError(String::from("Array")))
+        }
+
+        let mut context = MathContext::new();
+        context.user_functions = user_functions;
+        context.user_function_inputs = user_function_inputs;
+        context.user_constants = user_constants;
+
+        Ok(context)
+    }
 }
 
 impl<'a> MathContext {
@@ -443,7 +618,7 @@ impl<'a> MathContext {
             Some(x) => Some(x.0.clone()),
             None => {
                 match self.user_functions.get(s) {
-                    Some(x) => Some(x.2.clone()),
+                    Some(_) => Some(FunctionType::UserFunction),
                     None => None
                 }
             }
@@ -1063,7 +1238,7 @@ impl<'a> MathContext {
     pub fn add_user_function<S1, S2>(& mut self, repr: S1, t: TreeNode<Token>, vars: Vec<String>,
                                      input: S2) where S1: Into<String>, S2: Into<String> {
         let repr_string : String = repr.into();
-        self.user_functions.insert(repr_string.clone(), (t, vars, FunctionType::UserFunction));
+        self.user_functions.insert(repr_string.clone(), (t, vars));
         self.user_function_inputs.insert(repr_string, input.into());
     }
 

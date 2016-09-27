@@ -5,3 +5,4 @@ authors = ["jonas"]
 
 [dependencies]
 num = "0.1"
+serde_json = "0.8"

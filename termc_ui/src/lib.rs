@@ -1,8 +1,8 @@
 
 #[cfg(unix)]
-mod unix;
+pub mod unix;
 #[cfg(windows)]
-mod windows;
+pub mod windows;
 
 use std::char;
 use std::error::Error;

@@ -63,6 +63,29 @@ $ termc
 ans = 7-2i
 ```
 
+### Serialization and Deserialization to / from JSON
+**termc** supports the serialization and deserialization of all custom functions and constants.
+Therefore, all definitions can be saved to a file.
+Example:
+```sh
+$ termc
+>>> f(x) = x^2
+
+>>> c = 79.882
+
+>>> save /home/kantic/termc.save
+
+>>> exit
+
+$ termc
+>>> load /home/kantic/termc.save
+
+>>> f(c)
+ans = 6381.133924000001
+
+>>> ...
+```
+
 ### Command History
 **termc** remembers the user inputs in a session. Thus, the user is able to quickly get previous inputs by using the
 up and down arrow-keys.
