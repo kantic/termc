@@ -43,6 +43,15 @@ $ termc
 ans = -9.654125476854839+2.841692295606352i
 ```
 
+### Scientific notation
+**termc** supports scientific notation.
+Example:
+```sh
+$ termc
+>>> 25E-3
+ans = 0.025
+```
+
 ### User-defined constants
 **termc** supports the definition of custom constants.
 Example:

@@ -159,6 +159,7 @@ impl<'a> Tokenizer<'a> {
 
         let mut value = String::new();
         let mut is_first_digit : bool = true;
+        let mut last_was_e : bool = false;
         let mut num_type = NumberType::Real;
 
         while !self.input_stream.eof() {
@@ -178,6 +179,13 @@ impl<'a> Tokenizer<'a> {
                 self.input_stream.next().unwrap();
                 //value.push(self.input_stream.next().unwrap());
                 break;
+            }
+            else if peeked_char == 'E' {
+                last_was_e = true;
+                value.push(self.input_stream.next().unwrap());
+            }
+            else if (peeked_char == '+' || peeked_char == '-') && last_was_e {
+                value.push(self.input_stream.next().unwrap());
             }
             else {
                 break;

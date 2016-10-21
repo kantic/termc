@@ -33,6 +33,16 @@ fn tst_get_result() {
     assert!(result.result_type == NumberType::Real);
     assert!(result.value.re - 0.09878 < TEST_BOUND);
 
+    // test number in scientific notation
+    let result = get_result("-.48E7i", & mut context);
+    assert!(result.is_ok());
+    let result = result.ok().unwrap();
+    assert!(result.is_some());
+    let result = result.unwrap();
+    assert!(result.result_type == NumberType::Complex);
+    assert!(result.value.re - 0.0 < TEST_BOUND);
+    assert!(result.value.im + 4800000.0 < TEST_BOUND);
+
     // test constant pi
     let result = get_result("pi", & mut context);
     assert!(result.is_ok());
