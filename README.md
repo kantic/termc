@@ -25,6 +25,8 @@ It supports the basic operations ("+", "-", "*", "/", "%"  and "^") as well as t
 - sqrt
 - pow (e.g. "pow(5, 2)" = 25)
 - root (e.g. "root(4, 2)" = 2)
+- im
+- re
 
 Futhermore, the following built-in constants are supported:
 - e

@@ -312,6 +312,8 @@ impl<'a> Evaluator<'a> {
                     FunctionType::ArcSin => Ok(EvaluationResult::from(MathContext::function_arcsin(& args[0]))),
                     FunctionType::ArcTan => Ok(EvaluationResult::from(MathContext::function_arctan(& args[0]))),
                     FunctionType::ArcCot => Ok(EvaluationResult::from(MathContext::function_arccot(& args[0]))),
+                    FunctionType::Im => Ok(EvaluationResult::from(MathContext::function_im(& args[0]))),
+                    FunctionType::Re => Ok(EvaluationResult::from(MathContext::function_re(& args[0]))),
                     FunctionType::UserFunction => {
                         let slice = subtree.successors.as_slice();
                         let mut args_token : Vec<& TreeNode<Token>> = Vec::new();

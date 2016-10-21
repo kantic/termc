@@ -670,6 +670,12 @@ fn tst_get_result() {
     let msg = format!("{}", result.err().unwrap());
     assert!(msg == "Error: Expected an argument.\npow(5,)\n      ^~~~ Found: symbol \")\"");
 
+    // test expectation of "," or ")" in a function argument list
+    let result = get_result("sqrt(4, 3 % 5.000000000000 01)", & mut context);
+    assert!(result.is_err());
+    let msg = format!("{}", result.err().unwrap());
+    assert!(msg == "Error: Expected \",\" or \")\".\nsqrt(4, 3 % 5.000000000000 01)\n                            ^~~~ Found: \"01\"");
+
     // test expectation of non-built-in constant when a user constant is defined
     let result = get_result("pi = 5", & mut context);
     assert!(result.is_err());
@@ -697,9 +703,6 @@ fn tst_get_result() {
     assert!(result.is_err());
     let msg = format!("{}", result.err().unwrap());
     assert!(msg == "Error: Expected distinct arguments.\nh(x, y, x) = x^2+y\n^~~~ Found: function definition with partly equal arguments");
-    let mut context = MathContext::new();
-
-    // test expectation of
 }
 
 #[test]

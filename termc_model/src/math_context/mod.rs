@@ -48,6 +48,8 @@ pub enum FunctionType {
     ArcSinh,
     ArcTanh,
     ArcCoth,
+    Im,
+    Re,
     UserFunction
 }
 
@@ -309,6 +311,9 @@ impl<'a> MathContext {
         functions.insert(String::from("exp"), (FunctionType::Exp, 1));
         functions.insert(String::from("sqrt"), (FunctionType::Sqrt, 1));
         functions.insert(String::from("ln"), (FunctionType::Ln, 1));
+        functions.insert(String::from("im"), (FunctionType::Im, 1));
+        functions.insert(String::from("re"), (FunctionType::Re, 1));
+
         functions.insert(String::from("pow"), (FunctionType::Pow, 2));
         functions.insert(String::from("root"), (FunctionType::Root, 2));
 
@@ -756,7 +761,7 @@ impl<'a> MathContext {
     /// Checks whether the specified float has decimal_places.
     fn has_decimal_places(f: f64) -> bool {
         let i = f as i64;
-        f.abs() - (i.abs() as f64) > 0.0
+        f.abs() - (i.abs() as f64) > 0.0_f64
     }
 
     /// Implements the mathematical "^" operation.
@@ -873,7 +878,7 @@ impl<'a> MathContext {
     pub fn function_arccos(arg: & MathResult) -> MathResult {
         let t : NumberType = match arg.result_type {
             NumberType::Real => {
-                if !(arg.value.re <= 1.0 && arg.value.re >= -1.0) {
+                if !(arg.value.re <= 1.0_f64 && arg.value.re >= -1.0_f64) {
                     NumberType::Complex
                 }
                 else {
@@ -901,7 +906,7 @@ impl<'a> MathContext {
     pub fn function_arcsin(arg: & MathResult) -> MathResult {
         let t : NumberType = match arg.result_type {
             NumberType::Real => {
-                if !(arg.value.re <= 1.0 && arg.value.re >= -1.0) {
+                if !(arg.value.re <= 1.0_f64 && arg.value.re >= -1.0_f64) {
                     NumberType::Complex
                 }
                 else {
@@ -1019,7 +1024,7 @@ impl<'a> MathContext {
     pub fn function_arccosh(arg: & MathResult) -> MathResult {
         let t : NumberType = match arg.result_type {
             NumberType::Real => {
-                if !(arg.value.re >= 1.0) {
+                if !(arg.value.re >= 1.0_f64) {
                     NumberType::Complex
                 }
                 else {
@@ -1062,7 +1067,7 @@ impl<'a> MathContext {
     pub fn function_arctanh(arg: & MathResult) -> MathResult {
         let t : NumberType = match arg.result_type {
             NumberType::Real => {
-                if !(arg.value.re > -1.0 && arg.value.re < 1.0) {
+                if !(arg.value.re > -1.0_f64 && arg.value.re < 1.0_f64) {
                     NumberType::Complex
                 }
                 else {
@@ -1090,7 +1095,7 @@ impl<'a> MathContext {
     pub fn function_arccoth(arg: & MathResult) -> MathResult {
         let t : NumberType = match arg.result_type {
             NumberType::Real => {
-                if !(arg.value.re > 1.0 || arg.value.re < -1.0) {
+                if !(arg.value.re > 1.0_f64 || arg.value.re < -1.0_f64) {
                     NumberType::Complex
                 }
                 else {
@@ -1102,7 +1107,7 @@ impl<'a> MathContext {
         };
 
         let temp = MathResult::new(NumberType::Complex, -num::Complex::i() * arg.value);
-        MathResult::new(t, 1.0 / num::Complex::i() * MathContext::function_arccot(& temp).value)
+        MathResult::new(t, 1.0_f64 / num::Complex::i() * MathContext::function_arccot(& temp).value)
     }
 
     /// Implements the mathematical exponential function.
@@ -1135,7 +1140,7 @@ impl<'a> MathContext {
     pub fn function_ln(arg: & MathResult) -> MathResult {
         let t : NumberType = match arg.result_type {
             NumberType::Real => {
-                if arg.value.re < 0.0 {
+                if arg.value.re < 0.0_f64 {
                     NumberType::Complex
                 }
                 else {
@@ -1163,7 +1168,7 @@ impl<'a> MathContext {
     pub fn function_sqrt(arg: & MathResult) -> MathResult {
         let t : NumberType = match arg.result_type {
             NumberType::Real => {
-                if arg.value.re < 0.0 {
+                if arg.value.re < 0.0_f64 {
                     NumberType::Complex
                 }
                 else {
@@ -1175,6 +1180,38 @@ impl<'a> MathContext {
         };
 
         MathResult::new(t, arg.value.sqrt())
+    }
+
+    /// Implements the mathematical imaginary-part function.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use termc_model::math_context::MathContext;
+    /// use termc_model::math_result::MathResult;
+    ///
+    /// let arg = MathResult::from((25.7, 89.224));
+    /// assert!(MathContext::function_im(& arg).value.im - 89.224_f64 < 10e-10_f64);
+    /// assert!(MathContext::function_im(& arg).value.re - 0.0_f64 < 10e-10_f64);
+    /// ```
+    pub fn function_im(arg: & MathResult) -> MathResult {
+        MathResult::new(NumberType::Complex, Complex::new(0.0_f64, arg.value.im))
+    }
+
+    /// Implements the mathematical imaginary-part function.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use termc_model::math_context::MathContext;
+    /// use termc_model::math_result::MathResult;
+    ///
+    /// let arg = MathResult::from((25.7, 89.224));
+    /// assert!(MathContext::function_re(& arg).value.im - 0.0_f64 < 10e-10_f64);
+    /// assert!(MathContext::function_re(& arg).value.re - 25.7_f64 < 10e-10_f64);
+    /// ```
+    pub fn function_re(arg: & MathResult) -> MathResult {
+        MathResult::new(NumberType::Complex, Complex::new(arg.value.re, 0.0_f64))
     }
 
     /// Returns the result type for a mathematical expression with the given operands.
