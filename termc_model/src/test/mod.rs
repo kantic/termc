@@ -147,6 +147,15 @@ fn tst_get_result() {
     assert!(result.result_type == NumberType::Real);
     assert!(result.value.re - 0.125 < TEST_BOUND);
 
+    // test binary operation "%"
+    let result = get_result("78%43.0", & mut context);
+    assert!(result.is_ok());
+    let result = result.ok().unwrap();
+    assert!(result.is_some());
+    let result = result.unwrap();
+    assert!(result.result_type == NumberType::Real);
+    assert!(result.value.re - 35.0 < TEST_BOUND);
+
     // test binary operation "^"
     let result = get_result("25^0.5", & mut context);
     assert!(result.is_ok());

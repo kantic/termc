@@ -20,6 +20,7 @@ pub enum OperationType {
     Mul,
     Div,
     Pow,
+    Mod,
     Assign
 }
 
@@ -273,6 +274,7 @@ impl<'a> MathContext {
         operations.insert(String::from("-"), (OperationType::Sub, 2));
         operations.insert(String::from("*"), (OperationType::Mul, 3));
         operations.insert(String::from("/"), (OperationType::Div, 3));
+        operations.insert(String::from("%"), (OperationType::Mod, 3));
         operations.insert(String::from("^"), (OperationType::Pow, 4));
 
         // defines functions types with associated with their string representation
@@ -714,6 +716,47 @@ impl<'a> MathContext {
     pub fn operation_div(lhs: & MathResult, rhs: & MathResult) -> MathResult {
         let t = MathContext::get_result_type(& vec![lhs, rhs]);
         MathResult::new(t, lhs.value / rhs.value)
+    }
+
+    /// Implements the mathematical "/" operation.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use termc_model::math_context::MathContext;
+    /// use termc_model::math_result::MathResult;
+    ///
+    /// let lhs = MathResult::from(5.0_f64);
+    /// let rhs = MathResult::from(3.0_f64);
+    /// assert!(MathContext::operation_mod(& lhs, & rhs).value.re - 2.0 < 10e-10_f64);
+    /// ```
+    pub fn operation_mod(lhs: & MathResult, rhs: & MathResult) -> MathResult {
+        let t = MathContext::get_result_type(& vec![lhs, rhs]);
+
+        // check if the input was no float
+        if MathContext::has_decimal_places(lhs.value.re)
+            || MathContext::has_decimal_places(rhs.value.re) {
+
+            MathResult::from(f64::NAN)
+        }
+        else {
+            let lhs_i = match lhs.result_type {
+                NumberType::Complex => return MathResult::from(f64::NAN),
+                NumberType::Real => lhs.value.re as i64
+            };
+            let rhs_i = match lhs.result_type {
+                NumberType::Complex => return MathResult::from(f64::NAN),
+                NumberType::Real => rhs.value.re as i64
+            };
+
+            MathResult::new(t, num::Complex::from((lhs_i % rhs_i) as f64))
+        }
+    }
+
+    /// Checks whether the specified float has decimal_places.
+    fn has_decimal_places(f: f64) -> bool {
+        let i = f as i64;
+        f.abs() - (i.abs() as f64) > 0.0
     }
 
     /// Implements the mathematical "^" operation.

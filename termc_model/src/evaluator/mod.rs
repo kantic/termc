@@ -252,6 +252,7 @@ impl<'a> Evaluator<'a> {
                             OperationType::Mul => Ok(EvaluationResult::from(MathContext::operation_mul(& left_val_num, & right_val_num))),
                             OperationType::Div => Ok(EvaluationResult::from(MathContext::operation_div(& left_val_num, & right_val_num))),
                             OperationType::Pow => Ok(EvaluationResult::from(MathContext::operation_pow(& left_val_num, & right_val_num))),
+                            OperationType::Mod => Ok(EvaluationResult::from(MathContext::operation_mod(& left_val_num, & right_val_num))),
                             _ => Err(EvaluationError::from(ExpectedErrorTemplate::new(input, "binary mathematical operation",
                                                                                       Some(format!("operation \"{}\"", subtree.content)),
                                                                                       subtree.content.get_end_pos())))

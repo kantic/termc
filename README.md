@@ -3,7 +3,7 @@
 ## Introduction and Goals
 **termc** is a calculator for the command line.
 The goal of this project is to provide an *easy-to-use and intuitive* command line calculator with a basic range of functions.
-It supports the basic operations ("+", "-", "*", "/" and "^") as well as the following built-in mathematical functions:
+It supports the basic operations ("+", "-", "*", "/", "%"  and "^") as well as the following built-in mathematical functions:
 - cos
 - sin
 - tan
