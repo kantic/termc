@@ -1211,7 +1211,7 @@ impl<'a> MathContext {
     /// assert!(MathContext::function_re(& arg).value.re - 25.7_f64 < 10e-10_f64);
     /// ```
     pub fn function_re(arg: & MathResult) -> MathResult {
-        MathResult::new(NumberType::Complex, Complex::new(arg.value.re, 0.0_f64))
+        MathResult::new(NumberType::Real, Complex::new(arg.value.re, 0.0_f64))
     }
 
     /// Returns the result type for a mathematical expression with the given operands.

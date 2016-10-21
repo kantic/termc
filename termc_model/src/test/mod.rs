@@ -467,6 +467,24 @@ fn tst_get_result() {
     assert!(result.result_type == NumberType::Real);
     assert!(result.value.re - 5.0 < TEST_BOUND);
 
+    // test im function
+    let result = get_result("im(57)", & mut context);
+    assert!(result.is_ok());
+    let result = result.ok().unwrap();
+    assert!(result.is_some());
+    let result = result.unwrap();
+    assert!(result.result_type == NumberType::Complex);
+    assert!(result.value.im - 0.0 < TEST_BOUND);
+
+    // test re function
+    let result = get_result("re(-57-9i)", & mut context);
+    assert!(result.is_ok());
+    let result = result.ok().unwrap();
+    assert!(result.is_some());
+    let result = result.unwrap();
+    assert!(result.result_type == NumberType::Real);
+    assert!(result.value.re + 57.0 < TEST_BOUND);
+
     // test nested functions
     let result = get_result("cos(exp(0.5)+pi/2*ln(2))-root(1, 2)", & mut context);
     assert!(result.is_ok());
