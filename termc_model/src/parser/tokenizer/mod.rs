@@ -96,10 +96,7 @@ impl<'a> Tokenizer<'a> {
     /// Returns the position of the current token (the last character) in the input string of the
     /// input stream.
     pub fn get_pos(& self) -> u32 {
-        match self.token {
-            Ok(ref x) => self.input_stream.get_pos() - (x.get_value().chars().count() as u32),
-            Err(_) => self.input_stream.get_pos() - 1
-        }
+        self.input_stream.get_pos() - 1
     }
 
     /// Returns the input string.
@@ -235,7 +232,7 @@ impl<'a> Tokenizer<'a> {
             // unknown function
 
             // every unknown char sequence that is followed by an open parenthesis is
-            // assumed to be an unknown constant
+            // assumed to be an unknown function
 
             // an unknown function is a function that is neither a built in nor a user defined
             // function; it may be the left hand side of an assignment

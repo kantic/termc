@@ -697,7 +697,9 @@ fn tst_get_result() {
     assert!(result.is_err());
     let msg = format!("{}", result.err().unwrap());
     assert!(msg == "Error: Expected distinct arguments.\nh(x, y, x) = x^2+y\n^~~~ Found: function definition with partly equal arguments");
-    // context needs to be reset here if further tests are added
+    let mut context = MathContext::new();
+
+    // test expectation of
 }
 
 #[test]
