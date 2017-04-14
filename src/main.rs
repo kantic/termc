@@ -1,5 +1,6 @@
 extern crate termc_model;
 extern crate termc_ui;
+extern crate serde_json;
 
 mod command_library;
 
@@ -8,7 +9,6 @@ use std::fs::File;
 use std::io::{Read, Write};
 use termc_model::get_result;
 use termc_model::math_context::MathContext;
-use termc_model::serialization::Serialization;
 use termc_ui::{create_terminal_handle, TerminalUI};
 use command_library::{CommandType, check_for_command};
 
@@ -149,7 +149,7 @@ fn load_context<T: TerminalUI>(p: & str, context: & mut MathContext, terminal: O
             return
         }
     }
-    *context = match MathContext::deserialize(& s) {
+    *context = match serde_json::from_str(&s) {
         Ok(c) => c,
         Err(e) => {
             match terminal {
@@ -158,13 +158,14 @@ fn load_context<T: TerminalUI>(p: & str, context: & mut MathContext, terminal: O
             }
             MathContext::new()
         }
-    }
+    };
+    context.initialize();
 }
 
 /// Saves the MathContext object to the specified file.
 fn save_context<T: TerminalUI>(p: & str, context: & mut MathContext, terminal: Option<& mut T>) {
 
-    let serialization = match context.pretty_serialize() {
+    let serialization = match serde_json::to_string_pretty(&context) {
         Ok(s) => s,
         Err(e) => {
             match terminal {

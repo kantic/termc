@@ -1,19 +1,13 @@
-
-extern crate num;
-extern crate serde_json;
-
 use std::f64;
 use std::collections::{HashMap, HashSet};
 use num::complex::Complex;
-use serde_json::{Value, Map};
 use token::{Token, TokenType, SymbolicTokenType};
 use token::NumberType;
 use math_result::MathResult;
 use tree::TreeNode;
-use serialization::{Serialization, SerializationError};
 
 /// Defines the types of supported operations.
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Serialize, Deserialize)]
 pub enum OperationType {
     Add,
     Sub,
@@ -25,7 +19,7 @@ pub enum OperationType {
 }
 
 /// Defines the types of supported built-in functions.
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Serialize, Deserialize)]
 pub enum FunctionType {
     Cos,
     Sin,
@@ -54,197 +48,40 @@ pub enum FunctionType {
 }
 
 /// Defines the mathematical context.
+#[derive(Serialize, Deserialize)]
 pub struct MathContext {
     /// Map of supported operations (operation type and precedence).
+    #[serde(skip_serializing, skip_deserializing)]
     operations: HashMap<String, (OperationType, u32)>,
+
     /// Set of symbols representing numbers.
+    #[serde(skip_serializing, skip_deserializing)]
     number_symbols: HashSet<char>,
+
     /// Set of symbols representing words.
+    #[serde(skip_serializing, skip_deserializing)]
     literals : HashSet<char>,
+
     /// Set of functions (function type and number of arguments).
+    #[serde(skip_serializing, skip_deserializing)]
     functions: HashMap<String, (FunctionType, u32)>,
+
     /// Set of user defined functions (the function expression tree and it's variables).
     user_functions: HashMap<String, (TreeNode<Token>, Vec<String>)>,
+
     /// The user inputs that define user functions.
     user_function_inputs: HashMap<String, String>,
+
     /// Map of built-in constants (constant representation and value).
+    #[serde(skip_serializing, skip_deserializing)]
     constants : HashMap<String, MathResult>,
+
     /// Map of user defined constants (constant representation and value).
     user_constants: HashMap<String, MathResult>,
+
     /// Set of punctuation symbols.
+    #[serde(skip_serializing, skip_deserializing)]
     punctuation : HashSet<char>
-}
-
-impl Serialization for MathContext {
-
-    /// Generates the JSON object for serialization.
-    fn build_value(& self) -> Value {
-        let mut m : Map<String, Value> = Map::new();
-        let mut user_constants_val : Vec<Value> = Vec::new();
-        for (key, ref value) in self.user_constants.iter() {
-            let mut entry: Vec<Value> = Vec::new();
-            entry.push(Value::String(key.clone()));
-            entry.push(value.build_value());
-            user_constants_val.push(Value::Array(entry));
-        }
-
-        let mut user_functions_val : Vec<Value> = Vec::new();
-        for (key, ref value) in self.user_functions.iter() {
-            let mut entry: Vec<Value> = Vec::new();
-            entry.push(Value::String(key.clone()));
-            entry.push(value.0.build_value());
-            let mut array : Vec<Value> = Vec::new();
-            for elem in value.1.iter() {
-                array.push(Value::String(elem.clone()));
-            }
-            entry.push(Value::Array(array));
-            user_functions_val.push(Value::Array(entry));
-        }
-
-        let mut user_function_inputs_val : Vec<Value> = Vec::new();
-        for (key, ref value) in self.user_function_inputs.iter() {
-            let mut entry: Vec<Value> = Vec::new();
-            entry.push(Value::String(key.clone()));
-            entry.push(Value::String(value.to_owned().clone()));
-            user_function_inputs_val.push(Value::Array(entry));
-        }
-
-        m.insert(String::from("userConstants"), Value::Array(user_constants_val));
-        m.insert(String::from("userFunctions"), Value::Array(user_functions_val));
-        m.insert(String::from("userFunctionInputs"), Value::Array(user_function_inputs_val));
-        Value::Object(m)
-    }
-
-    /// Generates a deserialized instance from the specified JSON object.
-    fn build_instance(v: Value) -> Result<Self, SerializationError> {
-
-        let mut m = match v {
-            Value::Object(map) => map,
-            _ => return Err(SerializationError::ValueTypeError(String::from("Object")))
-        };
-
-        let user_constants_val = match m.remove("userConstants") {
-            Some(v) => v,
-            None => return Err(SerializationError::MissingValueError(String::from("MathContext: userConstants")))
-        };
-
-        let user_functions_val = match m.remove("userFunctions") {
-            Some(v) => v,
-            None => return Err(SerializationError::MissingValueError(String::from("MathContext: userFunctions")))
-        };
-
-        let user_function_inputs_val = match m.remove("userFunctionInputs") {
-            Some(v) => v,
-            None => return Err(SerializationError::MissingValueError(String::from("MathContext: userFunctionInputs")))
-        };
-
-        let mut user_constants : HashMap<String, MathResult> = HashMap::new();
-        match user_constants_val {
-            Value::Array(vec) => {
-                for entry in vec {
-                    match entry {
-                        Value::Array(mut elements) => {
-                            let value = elements.pop().unwrap_or(Value::Null);
-                            let key = elements.pop().unwrap_or(Value::Null);
-                            let key = match key {
-                                Value::String(str) => str,
-                                _ => return Err(SerializationError::ValueTypeError(String::from("String")))
-                            };
-                            let value = try!(MathResult::build_instance(value));
-
-                            user_constants.insert(key, value);
-                        },
-
-                        _ => return Err(SerializationError::ValueTypeError(String::from("Object")))
-                    }
-                }
-            },
-
-            _ => return Err(SerializationError::ValueTypeError(String::from("Array")))
-        }
-
-        let mut user_functions : HashMap<String, (TreeNode<Token>, Vec<String>)> = HashMap::new();
-        match user_functions_val {
-            Value::Array(vec) => {
-                for entry in vec {
-                    match entry {
-                        Value::Array(mut elements) => {
-                            let vars = elements.pop().unwrap_or(Value::Null);
-                            let treenode = elements.pop().unwrap_or(Value::Null);
-                            let key = elements.pop().unwrap_or(Value::Null);
-
-                            let key = match key {
-                                Value::String(str) => str,
-                                _ => return Err(SerializationError::ValueTypeError(String::from("String")))
-                            };
-
-                            let treenode = try!(TreeNode::build_instance(treenode));
-                            let vars = match vars {
-                                Value::Array(entries) => {
-                                    let mut v : Vec<String> = Vec::new();
-                                    for var in entries {
-                                        match var {
-                                            Value::String(str) => v.push(str),
-                                            _ => return Err(SerializationError::ValueTypeError(String::from("String")))
-                                        }
-                                    }
-
-                                    v
-                                },
-
-                                _ => return Err(SerializationError::ValueTypeError(String::from("Array")))
-                            };
-
-                            user_functions.insert(key, (treenode, vars));
-                        },
-
-                        _ => return Err(SerializationError::ValueTypeError(String::from("Array")))
-                    }
-                }
-            },
-
-            _ => return Err(SerializationError::ValueTypeError(String::from("Array")))
-        }
-
-        let mut user_function_inputs : HashMap<String, String> = HashMap::new();
-        match user_function_inputs_val {
-            Value::Array(vec) => {
-                for entry in vec {
-                    match entry {
-                        Value::Array(mut elements) => {
-                            let input = elements.pop().unwrap_or(Value::Null);
-                            let key = elements.pop().unwrap_or(Value::Null);
-
-                            let key = match key {
-                                Value::String(str) => str,
-
-                                _ => return Err(SerializationError::ValueTypeError(String::from("String")))
-                            };
-
-                            let input = match input {
-                                Value::String(str) => str,
-
-                                _ => return Err(SerializationError::ValueTypeError(String::from("String")))
-                            };
-
-                            user_function_inputs.insert(key, input);
-                        },
-
-                        _ => return Err(SerializationError::ValueTypeError(String::from("Array")))
-                    }
-                }
-            },
-
-            _ => return Err(SerializationError::ValueTypeError(String::from("Array")))
-        }
-
-        let mut context = MathContext::new();
-        context.user_functions = user_functions;
-        context.user_function_inputs = user_function_inputs;
-        context.user_constants = user_constants;
-
-        Ok(context)
-    }
 }
 
 impl<'a> MathContext {
@@ -259,6 +96,20 @@ impl<'a> MathContext {
     /// let context = MathContext::new();
     /// ```
     pub fn new() -> MathContext {
+
+        let (number_symbols, literals, operations, functions, constants,
+            punctuation) = MathContext::get_init_values();
+        MathContext {
+            operations: operations, number_symbols: number_symbols, literals: literals,
+            functions: functions, user_functions: HashMap::new(), user_function_inputs: HashMap::new(),
+            constants: constants, user_constants: HashMap::new(), punctuation: punctuation
+        }
+    }
+
+    fn get_init_values() -> (HashSet<char>, HashSet<char>, HashMap<String, (OperationType, u32)>,
+                        HashMap<String, (FunctionType, u32)>, HashMap<String, MathResult>,
+                        HashSet<char>) {
+
         let number_symbols: HashSet<char> = vec!['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
             .into_iter().collect();
 
@@ -328,11 +179,19 @@ impl<'a> MathContext {
         punctuation.insert(')');
         punctuation.insert(',');
 
-        MathContext {
-            operations: operations, number_symbols: number_symbols, literals: literals,
-            functions: functions, user_functions: HashMap::new(), user_function_inputs: HashMap::new(),
-            constants: constants, user_constants: HashMap::new(), punctuation: punctuation
-        }
+        (number_symbols, literals, operations, functions, constants, punctuation)
+    }
+
+    pub fn initialize(& mut self) {
+        let (number_symbols, literals, operations, functions,
+            constants, punctuation) = MathContext::get_init_values();
+
+        self.number_symbols = number_symbols;
+        self.literals = literals;
+        self.operations = operations;
+        self.functions = functions;
+        self.constants = constants;
+        self.punctuation = punctuation;
     }
 
     /// Checks whether the specified string is an operation.
@@ -754,7 +613,7 @@ impl<'a> MathContext {
                 NumberType::Real => rhs.value.re as i64
             };
 
-            MathResult::new(t, num::Complex::from((lhs_i % rhs_i) as f64))
+            MathResult::new(t, Complex::from((lhs_i % rhs_i) as f64))
         }
     }
 
@@ -1106,8 +965,8 @@ impl<'a> MathContext {
             NumberType::Complex => NumberType::Complex
         };
 
-        let temp = MathResult::new(NumberType::Complex, -num::Complex::i() * arg.value);
-        MathResult::new(t, 1.0_f64 / num::Complex::i() * MathContext::function_arccot(& temp).value)
+        let temp = MathResult::new(NumberType::Complex, -Complex::i() * arg.value);
+        MathResult::new(t, 1.0_f64 / Complex::i() * MathContext::function_arccot(& temp).value)
     }
 
     /// Implements the mathematical exponential function.

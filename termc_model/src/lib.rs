@@ -1,12 +1,14 @@
-extern crate num;
+#[macro_use]
+extern crate serde_derive;
 extern crate serde_json;
+extern crate serde;
+extern crate num;
 
 pub mod math_context;
 pub mod math_result;
 pub mod token;
 pub mod result_error;
 pub mod tree;
-pub mod serialization;
 
 mod parser;
 mod evaluator;

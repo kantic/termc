@@ -1,11 +1,10 @@
-
 use std::f64;
+use serde_json;
 use super::get_result;
 use math_context::MathContext;
 use token::{NumberType, TokenType, SymbolicTokenType, Token};
 use tree::TreeNode;
 use math_result::MathResult;
-use serialization::{Serialization, SerializationError};
 
 static TEST_BOUND : f64 = 10e-10;
 
@@ -735,77 +734,76 @@ fn tst_get_result() {
 
 #[test]
 fn tst_deserialization() {
-
     // test deserialization of NumberType
-    let n_type = NumberType::deserialize("{\"value\": \"Real\"}");
+    let n_type : Result<NumberType, serde_json::Error> = serde_json::from_str("\"Real\"");
     assert!(n_type.is_ok());
     let n_type = n_type.ok().unwrap();
     assert!(n_type == NumberType::Real);
 
-    let n_type = NumberType::deserialize("{\"value\": \"Complex\"}");
+    let n_type : Result<NumberType, serde_json::Error> = serde_json::from_str("\"Complex\"");
     assert!(n_type.is_ok());
     let n_type = n_type.ok().unwrap();
     assert!(n_type == NumberType::Complex);
 
     // test deserialization of SymbolicTokenType
-    let s_type = SymbolicTokenType::deserialize("{\"value\": \"UnknownConstant\"}");
+    let s_type : Result<SymbolicTokenType, serde_json::Error> = serde_json::from_str("\"UnknownConstant\"");
     assert!(s_type.is_ok());
     let s_type = s_type.ok().unwrap();
     assert!(s_type == SymbolicTokenType::UnknownConstant);
 
-    let s_type = SymbolicTokenType::deserialize("{\"value\": \"UnknownFunction\"}");
+    let s_type : Result<SymbolicTokenType, serde_json::Error> = serde_json::from_str("\"UnknownFunction\"");
     assert!(s_type.is_ok());
     let s_type = s_type.ok().unwrap();
     assert!(s_type == SymbolicTokenType::UnknownFunction);
 
     // test deserialization of TokenType
-    let t_type = TokenType::deserialize("{ \"type\": \"Number\", \"value\": { \"value\": \"Real\" } }");
+    let t_type : Result<TokenType, serde_json::Error> = serde_json::from_str("{ \"Number\": \"Real\" }");
     assert!(t_type.is_ok());
     let t_type = t_type.ok().unwrap();
     assert!(t_type == TokenType::Number(NumberType::Real));
 
-    let t_type = TokenType::deserialize("{ \"type\": \"Constant\", \"value\": \"Constant\" }");
+    let t_type : Result<TokenType, serde_json::Error> = serde_json::from_str("\"Constant\"");
     assert!(t_type.is_ok());
     let t_type = t_type.ok().unwrap();
     assert!(t_type == TokenType::Constant);
 
-    let t_type = TokenType::deserialize("{ \"type\": \"UserConstant\", \"value\": \"UserConstant\" }");
+    let t_type : Result<TokenType, serde_json::Error> = serde_json::from_str("\"UserConstant\"");
     assert!(t_type.is_ok());
     let t_type = t_type.ok().unwrap();
     assert!(t_type == TokenType::UserConstant);
 
-    let t_type = TokenType::deserialize("{ \"type\": \"Function\", \"value\": \"Function\" }");
+    let t_type : Result<TokenType, serde_json::Error> = serde_json::from_str("\"Function\"");
     assert!(t_type.is_ok());
     let t_type = t_type.ok().unwrap();
     assert!(t_type == TokenType::Function);
 
-    let t_type = TokenType::deserialize("{ \"type\": \"UserFunction\", \"value\": \"UserFunction\" }");
+    let t_type : Result<TokenType, serde_json::Error> = serde_json::from_str("\"UserFunction\"");
     assert!(t_type.is_ok());
     let t_type = t_type.ok().unwrap();
     assert!(t_type == TokenType::UserFunction);
 
-    let t_type = TokenType::deserialize("{ \"type\": \"Operation\", \"value\": \"Operation\" }");
+    let t_type : Result<TokenType, serde_json::Error> = serde_json::from_str("\"Operation\"");
     assert!(t_type.is_ok());
     let t_type = t_type.ok().unwrap();
     assert!(t_type == TokenType::Operation);
 
-    let t_type = TokenType::deserialize("{ \"type\": \"Punctuation\", \"value\": \"Punctuation\" }");
+    let t_type : Result<TokenType, serde_json::Error> = serde_json::from_str("\"Punctuation\"");
     assert!(t_type.is_ok());
     let t_type = t_type.ok().unwrap();
     assert!(t_type == TokenType::Punctuation);
 
-    let t_type = TokenType::deserialize("{ \"type\": \"Symbol\", \"value\": { \"value\": \"UnknownFunction\" } }");
+    let t_type : Result<TokenType, serde_json::Error> = serde_json::from_str("{ \"Symbol\": \"UnknownFunction\"}");
     assert!(t_type.is_ok());
     let t_type = t_type.ok().unwrap();
     assert!(t_type == TokenType::Symbol(SymbolicTokenType::UnknownFunction));
 
-    let t_type = TokenType::deserialize("{ \"type\": \"FunctionArg\", \"value\": \"FunctionArg\" }");
+    let t_type : Result<TokenType, serde_json::Error> = serde_json::from_str("\"FunctionArg\"");
     assert!(t_type.is_ok());
     let t_type = t_type.ok().unwrap();
     assert!(t_type == TokenType::FunctionArg);
 
     // test deserialization for Token
-    let t = Token::deserialize("{ \"tokenType\": {\"type\": \"Constant\", \"value\": \"Constant\"}, \"value\": \"pi\", \"endPos\": 15 }");
+    let t : Result<Token, serde_json::Error> = serde_json::from_str("{ \"token_type\": \"Constant\", \"value\": \"pi\", \"end_pos\": 15 }");
     assert!(t.is_ok());
     let t = t.ok().unwrap();
     assert!(t.get_type() == TokenType::Constant);
@@ -813,7 +811,7 @@ fn tst_deserialization() {
     assert!(t.get_end_pos() == 15);
 
     // test deserialization for TreeNode<Token>
-    let t : Result<TreeNode<Token>, SerializationError> = TreeNode::deserialize("{ \"content\": { \"tokenType\": {\"type\": \"Constant\", \"value\": \"Constant\"}, \"value\": \"e\", \"endPos\": 38 }, \"successors\": [] }");
+    let t : Result<TreeNode<Token>, serde_json::Error> = serde_json::from_str("{ \"content\": { \"token_type\": \"Constant\", \"value\": \"e\", \"end_pos\": 38 }, \"successors\": [] }");
     assert!(t.is_ok());
     let t = t.ok().unwrap();
     assert!(t.content.get_type() == TokenType::Constant);
@@ -821,7 +819,7 @@ fn tst_deserialization() {
     assert!(t.content.get_end_pos() == 38);
     assert!(t.successors.len() == 0);
 
-    let t : Result<TreeNode<Token>, SerializationError> = TreeNode::deserialize("{ \"content\": { \"tokenType\": {\"type\": \"Constant\", \"value\": \"Constant\"}, \"value\": \"e\", \"endPos\": 38 }, \"successors\": [{ \"content\": { \"tokenType\": {\"type\": \"Function\", \"value\": \"Function\"}, \"value\": \"sin\", \"endPos\": 2556 }, \"successors\": [] }] }");
+    let t : Result<TreeNode<Token>, serde_json::Error> = serde_json::from_str("{ \"content\": { \"token_type\": \"Constant\", \"value\": \"e\", \"end_pos\": 38 }, \"successors\": [{ \"content\": { \"token_type\": \"Function\", \"value\": \"sin\", \"end_pos\": 2556 }, \"successors\": [] }] }");
     assert!(t.is_ok());
     let t = t.ok().unwrap();
     assert!(t.content.get_type() == TokenType::Constant);
@@ -835,7 +833,7 @@ fn tst_deserialization() {
     assert!(succ.successors.len() == 0);
 
     // test deserialization of MathResult
-    let m = MathResult::deserialize("{ \"resultType\": { \"value\": \"Complex\" }, \"value\": { \"re\": 4.77, \"im\": 101.897553 } }");
+    let m : Result<MathResult, serde_json::Error> = serde_json::from_str("{ \"result_type\": \"Complex\", \"re\": 4.77, \"im\": 101.897553 }");
     assert!(m.is_ok());
     let m = m.ok().unwrap();
     assert!(m.result_type == NumberType::Complex);
@@ -843,7 +841,7 @@ fn tst_deserialization() {
     assert!(m.value.re - 101.897553 < TEST_BOUND);
 
     // test deserialization of MathContext
-    let m = MathContext::deserialize("{\"userConstants\":[[\"c\",{\"resultType\":{\"value\":\"Real\"},\"value\":{\"im\":0.0,\"re\":78.99}}]],\"userFunctionInputs\":[[\"f\",\"f(x) = x^2\"]],\"userFunctions\":[[\"f\",{\"content\":{\"endPos\":8,\"tokenType\":{\"type\":\"Operation\",\"value\":\"Operation\"},\"value\":\"^\"},\"successors\":[{\"content\":{\"endPos\":7,\"tokenType\":{\"type\":\"Symbol\",\"value\":{\"value\":\"UnknownConstant\"}},\"value\":\"x\"},\"successors\":[]},{\"content\":{\"endPos\":9,\"tokenType\":{\"type\":\"Number\",\"value\":{\"value\":\"Real\"}},\"value\":\"2\"},\"successors\":[]}]},[\"x\"]]]}");
+    let m : Result<MathContext, serde_json::Error> = serde_json::from_str("{\"user_constants\":{\"c\": {\"result_type\":\"Real\",\"im\":0.0,\"re\":78.99}},\"user_function_inputs\":{\"f\":\"f(x) = x^2\"},\"user_functions\":{\"f\": [{\"content\":{\"end_pos\":8,\"token_type\":\"Operation\",\"value\":\"^\"},\"successors\":[{\"content\":{\"end_pos\":7,\"token_type\":{\"Symbol\":\"UnknownConstant\"},\"value\":\"x\"},\"successors\":[]},{\"content\":{\"end_pos\":9,\"token_type\":{\"Number\":\"Real\"},\"value\":\"2\"},\"successors\":[]}]},[\"x\"]]}}");
     assert!(m.is_ok());
     let m = m.ok().unwrap();
     assert!(m.is_user_constant("c"));
