@@ -22,7 +22,7 @@ static STDOUT_ERR_MSG : &'static str = "Could not open stdout stream!";
 pub struct TerminalHandle {
     /// User command history.
     inputs: Vec<String>,
-    /// The current user input.
+    /// The current user input buffer.
     current_input: Vec<char>,
     /// The x coordinate of the cursor position.
     x: u16,
@@ -35,7 +35,7 @@ pub struct TerminalHandle {
 impl TerminalHandle {
     /// Returns a vector of strings. These strings are sub-strings that
     /// fit into one line of the terminal.
-    fn create_lines(& self, input: & str) -> Vec<String> {
+    fn split_into_lines(& self, input: & str) -> Vec<String> {
         let term_size = terminal_size().expect(TERM_ERR_MSG);
         let mut lines : Vec<String> = Vec::new();
         let mut s = String::new();
@@ -59,8 +59,9 @@ impl TerminalHandle {
     }
 
     /// Prints the specified command from the command history on the terminal.
-    fn print_history_input(& mut self, s: & String, flush: bool) {
-        self.clear_current_input(false);
+    // Also sets the buffer to the specified string.
+    fn set_history_input(& mut self, s: & String, flush: bool) {
+        self.clear_current_terminal_input(false);
         self.current_input.clear();
         for c in s.chars() {
             self.write_input_char(c, flush);
@@ -153,24 +154,25 @@ impl TerminalHandle {
     }
 
     /// Clears the current user input from the terminal and leaves the input base line with only
-    /// the prompt.
-    fn clear_current_input(& mut self, flush: bool) {
+    /// the prompt. The buffer variable is not affected.
+    fn clear_current_terminal_input(& mut self, flush: bool) {
         let len = PROMPT_LEN + (self.current_input.len() as u16);
         let term_size = terminal_size().expect(TERM_ERR_MSG);
         let lines : u16 = len / term_size.0 + 1;
         for i in 0..lines {
             let y = self.input_base_line + i;
-            self.control_terminal(& format!("{}{}", termion::cursor::Goto(1, y), termion::clear::CurrentLine), false);
+            self.control_terminal(& format!("{}{}", termion::cursor::Goto(1, y),
+                                  termion::clear::CurrentLine), false);
         }
 
         let input_base_line = self.input_base_line;
         self.x = 1;
         self.y = input_base_line;
         self.control_terminal(& format!("{}", termion::cursor::Goto(1, input_base_line)), false);
-        self.write_prompt(flush);
+        self.print_terminal_prompt(flush);
     }
 
-    /// Removes the character under the cursor from the current input.
+    /// Removes the character under the cursor from the current input line and the buffer.
     fn remove_input_char(& mut self, flush: bool) {
         if self.x == PROMPT_LEN + 1 && self.y == self.input_base_line {
             return;
@@ -188,16 +190,16 @@ impl TerminalHandle {
 
         let (x, y) = (self.x, self.y);
         self.current_input.remove(char_pos as usize);
-        self.clear_current_input(false);
+        self.clear_current_terminal_input(false);
         let input_copy = self.current_input.clone();
         let input_str : String = input_copy.into_iter().collect();
-        self.write_string(& input_str, false);
+        self.print_terminal_string(& input_str, false);
         self.x = x;
         self.y = y;
         self.control_terminal(& format!("{}", termion::cursor::Goto(x, y)), flush);
     }
 
-    /// Adds the specified character at the current cursor position to the input.
+    /// Adds the specified character at the current cursor position to the input and the buffer.
     fn write_input_char(& mut self, c: char, flush: bool) {
         let term_size = terminal_size().expect(TERM_ERR_MSG);
         let char_pos = self.get_input_cursor_pos();
@@ -214,18 +216,18 @@ impl TerminalHandle {
 
         let (x, y) = (self.x, self.y);
         self.current_input.insert((char_pos as usize), c);
-        self.clear_current_input(false);
+        self.clear_current_terminal_input(false);
         let input_copy = self.current_input.clone();
         let input_str : String = input_copy.into_iter().collect();
-        self.write_string(& input_str, false);
+        self.print_terminal_string(& input_str, false);
         self.x = x;
         self.y = y;
         self.control_terminal(& format!("{}", termion::cursor::Goto(x, y)), flush);
     }
 
-    /// Writes the specified string on the terminal without adding it's content to the user input.
-    fn write_string(& mut self, s: & str, flush: bool) {
-        let mut lines = self.create_lines(s);
+    /// Writes the specified string on the terminal without adding it's content to the buffer.
+    fn print_terminal_string(& mut self, s: & str, flush: bool) {
+        let mut lines = self.split_into_lines(s);
         if lines.len() == 0 {
             return;
         }
@@ -270,8 +272,9 @@ impl TerminalHandle {
     }
 
     /// Prints the prompt on the terminal.
-    fn write_prompt(& mut self, flush: bool) {
-        self.write_string(PROMPT, flush);
+    // The buffer is not affected.
+    fn print_terminal_prompt(& mut self, flush: bool) {
+        self.print_terminal_string(PROMPT, flush);
     }
 
     /// Manages the cursor position update after printing a result or an error.
@@ -334,7 +337,7 @@ impl TerminalUI for TerminalHandle {
 
         // prepare current input, write prompt and update cursor coordinates
         self.current_input = Vec::new();
-        self.write_prompt(true);
+        self.print_terminal_prompt(true);
         self.input_base_line = self.y;
         let mut selected : u32 = 0;
 
@@ -362,7 +365,7 @@ impl TerminalUI for TerminalHandle {
 
                     // get and print the selected history input
                     let output: String = String::from(self.inputs[selected as usize].as_ref());
-                    self.print_history_input(& output, false);
+                    self.set_history_input(& output, false);
                     self.current_input = output.chars().collect();
                 },
 
@@ -382,7 +385,7 @@ impl TerminalUI for TerminalHandle {
 
                     // get and print the selected history input
                     let output: String = String::from(self.inputs[selected as usize].as_ref());
-                    self.print_history_input(& output, false);
+                    self.set_history_input(& output, false);
                     self.current_input = output.chars().collect();
                 },
 
@@ -440,8 +443,8 @@ impl TerminalUI for TerminalHandle {
 
                 Key::Ctrl(c) => {
                     match c {
-                        'd' => {
-                            self.clear_current_input(true);
+                        'd' | 'c' => {
+                            self.clear_current_terminal_input(true);
                             self.write_input_char('e', false);
                             self.write_input_char('x', false);
                             self.write_input_char('i', false);
@@ -471,25 +474,29 @@ impl TerminalUI for TerminalHandle {
     }
 
     /// Prints the specified result on the terminal.
+    /// The buffer is not affected.
     fn print_result(& mut self, result: &str) {
-        self.write_string(& format!("{}{}", ANS_PREFIX, result), true);
+        self.print_terminal_string(& format!("{}{}", ANS_PREFIX, result), true);
         self.print_postprocessing();
 
     }
 
     /// Prints the specified error on the terminal.
+    /// The buffer is not affected.
     fn print_error<T: Error>(& mut self, err: T) {
-        self.write_string(& format!("{}{}{}", termion::color::Fg(termion::color::Red), err, termion::style::Reset), true);
+        self.print_terminal_string(& format!("{}{}{}", termion::color::Fg(termion::color::Red), err, termion::style::Reset), true);
         self.print_postprocessing();
     }
 
     /// Prints the specified string on the terminal.
+    /// The buffer is not affected.
     fn print_str(& mut self, s: & str) {
-        self.write_string(s, true);
+        self.print_terminal_string(s, true);
     }
 
     /// Prints newline on the terminal.
+    /// The buffer is not affected.
     fn print_newline(& mut self) {
-        self.write_string("\n\n", true);
+        self.print_terminal_string("\n\n", true);
     }
 }
