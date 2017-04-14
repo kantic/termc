@@ -438,6 +438,20 @@ impl TerminalUI for TerminalHandle {
                     }
                 },
 
+                Key::Ctrl(c) => {
+                    match c {
+                        'd' => {
+                            self.clear_current_input(true);
+                            self.write_input_char('e', false);
+                            self.write_input_char('x', false);
+                            self.write_input_char('i', false);
+                            self.write_input_char('t', true);
+                            break;
+                        },
+                        _ => continue
+                    }
+                }
+
                 _ => {
                     continue;
                 }

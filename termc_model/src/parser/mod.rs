@@ -252,7 +252,7 @@ impl<'a> Parser<'a> {
 
     /// Parses an operation expression tree while making the distinction between unary and binary
     /// operations (e.g. "-3*-5" is an unary expression ("-3") followed by an binary operation
-    /// ("<...>+<...>") followed by an unary expression ("-5").
+    /// ("<...>*<...>") followed by an unary expression ("-5")).
     fn parse_operation(& mut self) -> Result<TreeNode<Token>, ParseError> {
 
         let elem = try!(self.parse_element());
