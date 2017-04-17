@@ -5,15 +5,19 @@ use std::error::Error;
 use super::ANS_PREFIX;
 use super::PROMPT;
 use super::TerminalUI;
+use super::TerminalMode;
+use super::FormatType;
 
 /// Defines the windows terminal handle.
-pub struct TerminalHandle {}
+pub struct TerminalHandle {
+    format_type: FormatType
+}
 
 impl TerminalUI for TerminalHandle {
 
     /// Creates a new TerminalHandle instance.
-    fn new() -> TerminalHandle {
-        TerminalHandle {}
+    fn new(_: TerminalMode) -> TerminalHandle {
+        TerminalHandle {format_type: FormatType::Dec}
     }
 
     /// Initializes the terminal.
@@ -35,8 +39,19 @@ impl TerminalUI for TerminalHandle {
     }
 
     /// Prints the specified result on the terminal.
-    fn print_result(& mut self, result: &str) {
-        println!("{}{}\n", ANS_PREFIX, result);
+    fn print_result<T: fmt::Display + fmt::Binary + fmt::LowerHex + fmt::UpperHex + fmt::Octal>(& mut self, result: Option<&T>) {
+        match result {
+            Some(r) => println!("{}{}\n", ANS_PREFIX, r),
+            None => println!("{}{}\n", ANS_PREFIX, "")
+        }
+    }
+
+    fn print_results<T: fmt::Display + fmt::Binary + fmt::LowerHex + fmt::UpperHex + fmt::Octal>(& mut self, results: &Vec<T>) {
+        let mut conc = String::new();
+        for r in results {
+            conc += ";" + format_result!(self.format_type, r);
+        }
+        println!("{0}", conc);
     }
 
     /// Prints the specified error on the terminal.
@@ -51,6 +66,10 @@ impl TerminalUI for TerminalHandle {
 
     /// Prints newline on the terminal.
     fn print_newline(& mut self) {
-        println!("");
+        println!();
+    }
+
+    fn set_format_type(& mut self, t: FormatType) {
+        self.format_type = t;
     }
 }

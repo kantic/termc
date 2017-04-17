@@ -1,13 +1,16 @@
-
 extern crate termion;
 
 use std::io::{Write, stdout, stdin};
 use std::error::Error;
+use std::fmt;
 use super::ANS_PREFIX;
 use super::PROMPT;
 use super::PROMPT_LEN;
 use super::ENTER_KEY;
 use super::TerminalUI;
+use super::TerminalMode;
+use super::FormatType;
+use super::FormatIEEE754;
 use self::termion::event::Key;
 use self::termion::input::TermRead;
 use self::termion::raw::IntoRawMode;
@@ -29,7 +32,11 @@ pub struct TerminalHandle {
     /// The y coordinate of the cursor position.
     y: u16,
     /// The y coordinate of the current prompt line.
-    input_base_line: u16
+    input_base_line: u16,
+    /// The mode of the terminal.
+    mode: TerminalMode,
+
+    format_type: FormatType
 }
 
 impl TerminalHandle {
@@ -95,7 +102,7 @@ impl TerminalHandle {
     /// string.
     fn control_terminal(& mut self, cntrl: & str, flush: bool) {
         let mut stdout = stdout().into_raw_mode().expect("");
-        write!(stdout, "{}", cntrl).expect(WRT_ERR_MSG);
+        write!(stdout, "{0}", cntrl).expect(WRT_ERR_MSG);
 
         if flush {
             stdout.flush().expect(FLSH_ERR_MSG);
@@ -303,15 +310,22 @@ impl TerminalHandle {
 
 impl TerminalUI for TerminalHandle {
     /// Creates a new TerminalHandle instance.
-    fn new() -> TerminalHandle {
-        TerminalHandle {inputs: Vec::new(), current_input: Vec::new(), x: 0, y: 0, input_base_line: 0}
+    fn new(mode: TerminalMode) -> TerminalHandle {
+        TerminalHandle {inputs: Vec::new(), current_input: Vec::new(), x: 0, y: 0, input_base_line: 0, mode: mode, format_type: FormatType::Dec}
     }
 
-    /// Initializes the terminal (clears the terminal and positions the cursor).
+    /// Initializes the terminal for interactive mode (clears the terminal and positions the cursor).
     fn init(& mut self) {
-        self.x = 1;
-        self.y = 1;
-        self.control_terminal(& format!("{}{}", termion::clear::All, termion::cursor::Goto(1, 1)), true);
+        match self.mode {
+            TerminalMode::Call => {
+                self.control_terminal(&format!("{0}", termion::clear::CurrentLine), true);
+            },
+            TerminalMode::Interactive => {
+                self.x = 1;
+                self.y = 1;
+                self.control_terminal(& format!("{}{}", termion::clear::All, termion::cursor::Goto(1, 1)), true);
+            }
+        }
     }
 
     /// Finalize the terminal.
@@ -445,6 +459,7 @@ impl TerminalUI for TerminalHandle {
                     match c {
                         'd' | 'c' => {
                             self.clear_current_terminal_input(true);
+                            self.current_input.clear();
                             self.write_input_char('e', false);
                             self.write_input_char('x', false);
                             self.write_input_char('i', false);
@@ -475,28 +490,80 @@ impl TerminalUI for TerminalHandle {
 
     /// Prints the specified result on the terminal.
     /// The buffer is not affected.
-    fn print_result(& mut self, result: &str) {
-        self.print_terminal_string(& format!("{}{}", ANS_PREFIX, result), true);
-        self.print_postprocessing();
+    fn print_result<T: fmt::Display + fmt::Binary + fmt::LowerHex + fmt::UpperHex + fmt::Octal + FormatIEEE754>(& mut self, result: Option<&T>) {
+        match result {
+            Some(r) => {
+                match self.mode {
+                    TerminalMode::Call => println!("{0}", format_result!(self.format_type, r)),
+                    TerminalMode::Interactive => {
+                        self.print_terminal_string(&format_result!(self.format_type, r, ANS_PREFIX), true);
+                        self.print_postprocessing();
+                    }
+                }
+            },
+            None => {
+                match self.mode {
+                    TerminalMode::Call => println!(),
+                    TerminalMode::Interactive => {
+                        self.print_terminal_string(&format!("{0}", ANS_PREFIX), true);
+                        self.print_postprocessing();
+                    }
+                }
+            }
+        }
+    }
 
+    fn print_results<T: fmt::Display + fmt::Binary + fmt::LowerHex + fmt::UpperHex + fmt::Octal + FormatIEEE754>(& mut self, results: &Vec<T>) {
+        match self.mode {
+            TerminalMode::Call => {
+                let mut conc = String::new();
+                for r in results {
+                    conc.push_str(&format_result!(self.format_type, r));
+                    conc.push(';');
+                }
+                conc.pop();  // remove the last ';'
+                println!("{0}", conc);
+            },
+            TerminalMode::Interactive => {
+                for r in results {
+                    self.print_result(Some(r));
+                }
+            }
+        }
     }
 
     /// Prints the specified error on the terminal.
     /// The buffer is not affected.
     fn print_error<T: Error>(& mut self, err: T) {
-        self.print_terminal_string(& format!("{}{}{}", termion::color::Fg(termion::color::Red), err, termion::style::Reset), true);
-        self.print_postprocessing();
+        match self.mode {
+            TerminalMode::Call => println!("{0}{1}{2}", termion::color::Fg(termion::color::Red), err, termion::style::Reset),
+            TerminalMode::Interactive => {
+                self.print_terminal_string(& format!("{0}{1}{2}", termion::color::Fg(termion::color::Red), err, termion::style::Reset), true);
+                self.print_postprocessing();
+            }
+        }
     }
 
     /// Prints the specified string on the terminal.
     /// The buffer is not affected.
     fn print_str(& mut self, s: & str) {
-        self.print_terminal_string(s, true);
+        match self.mode {
+            TerminalMode::Call => print!("{0}", s),
+            TerminalMode::Interactive => self.print_terminal_string(s, true)
+        }
     }
 
     /// Prints newline on the terminal.
     /// The buffer is not affected.
     fn print_newline(& mut self) {
-        self.print_terminal_string("\n\n", true);
+        match self.mode {
+            TerminalMode::Call => println!(),
+            TerminalMode::Interactive => self.print_terminal_string("\n\n", true)
+        }
     }
+
+    fn set_format_type(& mut self, t: FormatType) {
+        self.format_type = t;
+    }
+
 }

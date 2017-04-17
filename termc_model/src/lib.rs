@@ -1,5 +1,8 @@
 #[macro_use]
 extern crate serde_derive;
+#[macro_use]
+extern crate lazy_static;
+
 extern crate serde_json;
 extern crate serde;
 extern crate num;
@@ -13,6 +16,7 @@ pub mod tree;
 mod parser;
 mod evaluator;
 mod error_templates;
+mod f64formatter;
 
 #[cfg(test)]
 mod test;

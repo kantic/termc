@@ -5,6 +5,8 @@ authors = ["jonas"]
 
 [dependencies]
 serde_json = "0.9.9"
+regex = "0.2.1"
+lazy_static = "0.2.8"
 
 [dependencies.termc_model]
 path = "termc_model"

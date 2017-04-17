@@ -1,15 +1,17 @@
+#[macro_use]
+extern crate lazy_static;
 extern crate termc_model;
 extern crate termc_ui;
 extern crate serde_json;
+extern crate regex;
 
 mod command_library;
 
 use std::env;
-use std::fs::File;
-use std::io::{Read, Write};
 use termc_model::get_result;
 use termc_model::math_context::MathContext;
-use termc_ui::{create_terminal_handle, TerminalUI};
+use termc_model::math_result::MathResult;
+use termc_ui::{create_terminal_handle, TerminalUI, TerminalMode};
 use command_library::{CommandType, check_for_command};
 
 #[cfg(unix)]
@@ -42,17 +44,20 @@ fn get_arguments() -> Vec<String> {
 /// Starts termc in command line call mode.
 /// Prints a ';'-separated list with the results of the specified mathematical expressions.
 fn start_call(args: & Vec<String>) {
-    let mut results : Vec<String> = Vec::new();
+
+    let mut terminal = create_terminal_handle(TerminalMode::Call);
+    terminal.init();
+
+    let mut results : Vec<MathResult> = Vec::new();
     let mut context = MathContext::new();
 
     for (i, arg) in args.iter().enumerate() {
 
-        match check_for_command(arg) {
+        match check_for_command::<TerminalHandle>(arg, &mut context, &mut terminal) {
             Some(c) => {
                 match c {
                     CommandType::Exit => break,
-                    CommandType::Load(path) => load_context::<TerminalHandle>(& path, & mut context, None),
-                    CommandType::Save(path) => save_context::<TerminalHandle>(& path, & mut context, None)
+                    _ => ()
                 }
             },
 
@@ -60,12 +65,14 @@ fn start_call(args: & Vec<String>) {
                 match get_result(arg.trim(), & mut context) {
                     Ok(result) => {
                         match result {
-                            Some(y) => results.push(y.to_string()),
+                            Some(y) => results.push(y),
                             None => ()
                         }
                     },
                     Err(err) => {
-                        println!("In input {}\n: {}", i+1, err);
+                        terminal.print_str(&format!("In input {0}:", i+1));
+                        terminal.print_newline();
+                        terminal.print_error(err);
                         break;
                     }
                 }
@@ -73,13 +80,13 @@ fn start_call(args: & Vec<String>) {
         }
     }
 
-    println!("{}", results.join(";"));
+   terminal.print_results(&results);
 }
 
 /// Starts termc in command line interactive mode.
 fn start_interactive() {
 
-    let mut terminal = create_terminal_handle();
+    let mut terminal = create_terminal_handle(TerminalMode::Interactive);
     terminal.init();
     let mut context = MathContext::new();
 
@@ -88,22 +95,15 @@ fn start_interactive() {
         let user_input = user_input.trim();
 
         if user_input.len() == 0 {
-            terminal.print_result("");
+            terminal.print_result::<MathResult>(None);
             continue;
         }
 
-        match check_for_command(user_input) {
+        match check_for_command(user_input, &mut context, &mut terminal) {
             Some(c) => {
                 match c {
                     CommandType::Exit => break,
-                    CommandType::Load(path) => {
-                        load_context(&path, &mut context, Some(&mut terminal));
-                        terminal.print_newline();
-                    },
-                    CommandType::Save(path) => {
-                        save_context(& path, & mut context, Some(& mut terminal));
-                        terminal.print_newline();
-                    }
+                    _ => terminal.print_newline()
                 }
             },
 
@@ -111,7 +111,7 @@ fn start_interactive() {
                 match get_result(& user_input, & mut context) {
                     Ok(result) => {
                         match result {
-                            Some(y) => terminal.print_result(& format!("{}", y)),
+                            Some(y) => terminal.print_result(Some(&y)),
                             None => terminal.print_newline()
                         }
                     },
@@ -124,76 +124,4 @@ fn start_interactive() {
     }
 
     terminal.end();
-}
-
-/// Loads the MathContext object from the specified file.
-fn load_context<T: TerminalUI>(p: & str, context: & mut MathContext, terminal: Option<& mut T>) {
-    let mut f = match File::open(p) {
-        Ok(x) => x,
-        Err(e) => {
-            match terminal {
-                Some(t) => t.print_error(e),
-                None => println!("Error: {}", e)
-            }
-            return
-        }
-    };
-    let mut s = String::new();
-    match f.read_to_string(& mut s) {
-        Ok(_) => (),
-        Err(e) => {
-            match terminal {
-                Some(t) => t.print_error(e),
-                None => println!("Error: {}", e)
-            }
-            return
-        }
-    }
-    *context = match serde_json::from_str(&s) {
-        Ok(c) => c,
-        Err(e) => {
-            match terminal {
-                Some(t) => t.print_error(e),
-                None => println!("Error: {}", e)
-            }
-            MathContext::new()
-        }
-    };
-    context.initialize();
-}
-
-/// Saves the MathContext object to the specified file.
-fn save_context<T: TerminalUI>(p: & str, context: & mut MathContext, terminal: Option<& mut T>) {
-
-    let serialization = match serde_json::to_string_pretty(&context) {
-        Ok(s) => s,
-        Err(e) => {
-            match terminal {
-                Some(t) => t.print_error(e),
-                None => println!("Error: {}", e)
-            }
-            return
-        }
-    };
-
-    let mut f = match File::create(p) {
-        Ok(x) => x,
-        Err(e) => {
-            match terminal {
-                Some(t) => t.print_error(e),
-                None => println!("Error: {}", e)
-            }
-            return
-        }
-    };
-
-    match f.write_all(serialization.as_ref()) {
-        Ok(_) => (),
-        Err(e) => {
-            match terminal {
-                Some(t) => t.print_error(e),
-                None => println!("Error: {}", e)
-            }
-        }
-    }
 }

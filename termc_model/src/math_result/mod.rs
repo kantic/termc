@@ -1,6 +1,7 @@
 use std::fmt;
 use num::complex::Complex;
 use token::NumberType;
+use f64formatter::F64Formatter;
 use serde::{Serialize, Serializer, Deserialize, Deserializer};
 use serde::ser::{SerializeStruct};
 use serde::de;
@@ -30,7 +31,7 @@ impl Serialize for MathResult {
 impl Deserialize for MathResult
 {
     /// Deserializes the MathResult struct.
-    /// See https://serde.rs/impl-deserialize.html for reference / examples.
+    /// See https://serde.rs/impl-deserialize.html for reference and examples.
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error> where
         D: Deserializer,
     {
@@ -138,9 +139,68 @@ impl fmt::Display for MathResult {
     fn fmt(& self, f: & mut fmt::Formatter) -> fmt::Result {
 
         match self.result_type {
-            NumberType::Real => write!(f, "{}", self.value.re),
-            NumberType::Complex => write!(f, "{}", self.value)
+            NumberType::Real => write!(f, "{0}", self.value.re),
+            NumberType::Complex => write!(f, "{0}", self.value)
         }
+    }
+}
+
+macro_rules! write_result {
+    ($f:ident, $t:expr, $val:expr) => {{
+    // f: fmt::Formatter
+    // t: format type (e.g "b" for binary)
+    // val: MathResult instance to print
+        let tmp : Complex<i64> = Complex::new($val.value.re as i64, $val.value.im as i64);
+        match $val.result_type {
+            NumberType::Real => write!($f, concat!("{0:#", $t, "}"), tmp.re),
+            NumberType::Complex => write!($f, concat!("{0:#", $t, "}"), tmp)
+        }
+    }}
+}
+
+macro_rules! fmt_impl {
+    ($f:ident, $obj:ident, $fmt_type:tt) => {{
+        match $obj.result_type {
+            NumberType::Real => {
+                write!($f, concat!("{0:#" ,$fmt_type, "}"), F64Formatter($obj.value.re))
+            },
+            NumberType::Complex => {
+                let tmp : Complex<F64Formatter> = Complex::new(F64Formatter($obj.value.re), F64Formatter($obj.value.im));
+                write!($f, concat!("{0:#", $fmt_type, "}"), tmp)
+            }
+        }
+    }}
+}
+
+impl fmt::Binary for MathResult {
+
+    fn fmt(& self, f: & mut fmt::Formatter) -> fmt::Result {
+
+        fmt_impl!(f, self, "b")
+    }
+}
+
+impl fmt::LowerHex for MathResult {
+
+    fn fmt(& self, f: & mut fmt::Formatter) -> fmt::Result {
+
+        fmt_impl!(f, self, "x")
+    }
+}
+
+impl fmt::UpperHex for MathResult {
+
+    fn fmt(& self, f: & mut fmt::Formatter) -> fmt::Result {
+
+        fmt_impl!(f, self, "X")
+    }
+}
+
+impl fmt::Octal for MathResult {
+
+    fn fmt(& self, f: & mut fmt::Formatter) -> fmt::Result {
+
+        fmt_impl!(f, self, "o")
     }
 }
 
