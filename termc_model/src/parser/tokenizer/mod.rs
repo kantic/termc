@@ -160,31 +160,68 @@ impl<'a> Tokenizer<'a> {
         let mut value = String::new();
         let mut is_first_digit : bool = true;
         let mut last_was_e : bool = false;
+        let mut formatting_zero : bool = false;
         let mut num_type = NumberType::Real;
 
         while !self.input_stream.eof() {
 
             let peeked_char = self.input_stream.peek().unwrap();
             if self.context.is_number_symbol(& peeked_char) {
+                if peeked_char == '0' && is_first_digit {
+                    formatting_zero = true;
+                }
+                else {
+                    formatting_zero = false;
+                }
+                last_was_e = false;
                 value.push(self.input_stream.next().unwrap());
             }
             else if peeked_char == '.' && is_first_digit {
+                formatting_zero = false;
+                last_was_e = false;
                 value.push(self.input_stream.next().unwrap());
             }
             else if peeked_char == '.' {
+                formatting_zero = false;
+                last_was_e = false;
                 value.push(self.input_stream.next().unwrap());
             }
             else if peeked_char == 'i' && !is_first_digit {
                 num_type = NumberType::Complex;
                 self.input_stream.next().unwrap();
-                //value.push(self.input_stream.next().unwrap());
                 break;
             }
             else if peeked_char == 'E' {
+                formatting_zero = false;
                 last_was_e = true;
                 value.push(self.input_stream.next().unwrap());
             }
             else if (peeked_char == '+' || peeked_char == '-') && last_was_e {
+                formatting_zero = false;
+                last_was_e = false;
+                value.push(self.input_stream.next().unwrap());
+            }
+            else if (peeked_char == 'x' || peeked_char == 'o' || peeked_char == 'b') && formatting_zero  {
+                // formatting characters for hexadecimal, octal and binary numbers
+                formatting_zero = false;
+                last_was_e = false;
+                value.push(self.input_stream.next().unwrap());
+            }
+            else if peeked_char == 'a' || peeked_char == 'b' || peeked_char == 'c' || peeked_char == 'd' || peeked_char == 'e' || peeked_char == 'f' {
+                // digits of hexadecimal numbers (note: the 'b' is tested for in the previous else-if branch)
+                formatting_zero = false;
+                last_was_e = false;
+                value.push(self.input_stream.next().unwrap());
+            }
+            else if self.context.is_literal_symbol(&peeked_char) {
+                // We are adding the literal symbols to the value string although they are no number symbols, so the parsing of the number will fail.
+                // So why do we do this? => To provide better error output for the user.
+                // If we would not add the literal symbol, the error for the input ">>> 5h" would be: "Error: Unexpected end of input reached.".
+                // If we add this literal symbol, the user will get the (much better) error message:
+                // Error: Expected literal number.
+                // 5h
+                //  ^~~~ Found: Invalid literal symbol(s).
+
                 value.push(self.input_stream.next().unwrap());
             }
             else {

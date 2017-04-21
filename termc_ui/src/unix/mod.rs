@@ -490,7 +490,7 @@ impl TerminalUI for TerminalHandle {
 
     /// Prints the specified result on the terminal.
     /// The buffer is not affected.
-    fn print_result<T: fmt::Display + fmt::Binary + fmt::LowerHex + fmt::UpperHex + fmt::Octal + FormatIEEE754>(& mut self, result: Option<&T>) {
+    fn print_result<T: fmt::Display + fmt::Binary + fmt::LowerHex + fmt::UpperHex + fmt::Octal + FormatIEEE754 + fmt::LowerExp + fmt::UpperExp>(& mut self, result: Option<&T>) {
         match result {
             Some(r) => {
                 match self.mode {
@@ -513,7 +513,9 @@ impl TerminalUI for TerminalHandle {
         }
     }
 
-    fn print_results<T: fmt::Display + fmt::Binary + fmt::LowerHex + fmt::UpperHex + fmt::Octal + FormatIEEE754>(& mut self, results: &Vec<T>) {
+    /// Prints the specified results on the terminal, separated with ';'.
+    fn print_results<T: fmt::Display + fmt::Binary + fmt::LowerHex + fmt::UpperHex + fmt::Octal +
+                        FormatIEEE754 + fmt::LowerExp + fmt::UpperExp>(& mut self, results: &Vec<T>) {
         match self.mode {
             TerminalMode::Call => {
                 let mut conc = String::new();

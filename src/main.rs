@@ -54,29 +54,34 @@ fn start_call(args: & Vec<String>) {
     for (i, arg) in args.iter().enumerate() {
 
         match check_for_command::<TerminalHandle>(arg, &mut context, &mut terminal) {
-            Some(c) => {
-                match c {
-                    CommandType::Exit => break,
-                    _ => ()
-                }
-            },
-
-            None => {
-                match get_result(arg.trim(), & mut context) {
-                    Ok(result) => {
-                        match result {
-                            Some(y) => results.push(y),
-                            None => ()
+            Ok(k) => {
+                match k {
+                    Some(c) => {
+                        match c {
+                            CommandType::Exit => break,
+                            _ => ()
                         }
                     },
-                    Err(err) => {
-                        terminal.print_str(&format!("In input {0}:", i+1));
-                        terminal.print_newline();
-                        terminal.print_error(err);
-                        break;
+
+                    None => {
+                        match get_result(arg.trim(), & mut context) {
+                            Ok(result) => {
+                                match result {
+                                    Some(y) => results.push(y),
+                                    None => ()
+                                }
+                            },
+                            Err(err) => {
+                                terminal.print_str(&format!("In input {0}:", i+1));
+                                terminal.print_newline();
+                                terminal.print_error(err);
+                                break;
+                            }
+                        }
                     }
                 }
-            }
+            },
+            Err(e) => terminal.print_error(e)
         }
     }
 
@@ -100,26 +105,31 @@ fn start_interactive() {
         }
 
         match check_for_command(user_input, &mut context, &mut terminal) {
-            Some(c) => {
-                match c {
-                    CommandType::Exit => break,
-                    _ => terminal.print_newline()
-                }
-            },
-
-            None => {
-                match get_result(& user_input, & mut context) {
-                    Ok(result) => {
-                        match result {
-                            Some(y) => terminal.print_result(Some(&y)),
-                            None => terminal.print_newline()
+            Ok(k) => {
+                match k {
+                    Some(c) => {
+                        match c {
+                            CommandType::Exit => break,
+                            _ => terminal.print_newline()
                         }
                     },
-                    Err(err) => {
-                        terminal.print_error(err);
+
+                    None => {
+                        match get_result(& user_input, & mut context) {
+                            Ok(result) => {
+                                match result {
+                                    Some(y) => terminal.print_result(Some(&y)),
+                                    None => terminal.print_newline()
+                                }
+                            },
+                            Err(err) => {
+                                terminal.print_error(err);
+                            }
+                        }
                     }
                 }
-            }
+            },
+            Err(e) => terminal.print_error(e)
         }
     }
 

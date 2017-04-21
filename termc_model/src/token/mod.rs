@@ -63,6 +63,26 @@ impl<'a> Token {
     }
 }
 
+impl Into<String> for Token {
+    /// Implements the Into trait for the Token struct.
+    fn into(self) -> String {
+        match self.token_type {
+            TokenType::Number(NumberType::Complex) => format!("{0}i", self.value),
+            _ => format!("{0}", self.value)
+        }
+    }
+}
+
+impl<'a> Into<String> for &'a Token {
+    /// Implements the Into trait for Token reference type.
+    fn into(self) -> String {
+        match self.token_type {
+            TokenType::Number(NumberType::Complex) => format!("{0}i", self.value),
+            _ => format!("{0}", self.value)
+        }
+    }
+}
+
 impl fmt::Display for Token {
 
     /// Returns a formatted representation of the token.

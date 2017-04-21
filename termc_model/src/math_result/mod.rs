@@ -128,6 +128,7 @@ impl Deserialize for MathResult
 }
 
 impl MathResult {
+    /// Creates a new instance of the MathResult struct.
     pub fn new(t: NumberType, val: Complex<f64>) -> MathResult {
         MathResult {result_type: t, value: val}
     }
@@ -160,6 +161,10 @@ macro_rules! write_result {
 
 macro_rules! fmt_impl {
     ($f:ident, $obj:ident, $fmt_type:tt) => {{
+    // f: the fmt::Formatter instance
+    // obj: the MathResult instance to be formatted
+    // fmt_type: the formatting type (e.g. 'b' (binary), 'o' (octal) or 'x' (hexadecimal))
+
         match $obj.result_type {
             NumberType::Real => {
                 write!($f, concat!("{0:#" ,$fmt_type, "}"), F64Formatter($obj.value.re))
@@ -173,7 +178,7 @@ macro_rules! fmt_impl {
 }
 
 impl fmt::Binary for MathResult {
-
+    /// Implements the formatted binary output for MathResult.
     fn fmt(& self, f: & mut fmt::Formatter) -> fmt::Result {
 
         fmt_impl!(f, self, "b")
@@ -181,7 +186,7 @@ impl fmt::Binary for MathResult {
 }
 
 impl fmt::LowerHex for MathResult {
-
+    /// Implements the formatted lower hexadecimal output for MathResult.
     fn fmt(& self, f: & mut fmt::Formatter) -> fmt::Result {
 
         fmt_impl!(f, self, "x")
@@ -189,7 +194,7 @@ impl fmt::LowerHex for MathResult {
 }
 
 impl fmt::UpperHex for MathResult {
-
+    /// Implements the formatted upper hexadecimal output for MathResult.
     fn fmt(& self, f: & mut fmt::Formatter) -> fmt::Result {
 
         fmt_impl!(f, self, "X")
@@ -197,10 +202,30 @@ impl fmt::UpperHex for MathResult {
 }
 
 impl fmt::Octal for MathResult {
-
+    /// Implements the formatted octal output for MathResult.
     fn fmt(& self, f: & mut fmt::Formatter) -> fmt::Result {
 
         fmt_impl!(f, self, "o")
+    }
+}
+
+impl fmt::LowerExp for MathResult {
+    /// Implements the formatted lower exponential output for MathResult.
+    fn fmt(& self, f: & mut fmt::Formatter) -> fmt::Result {
+        match self.result_type {
+            NumberType::Real => write!(f, "{0:#e}", self.value.re),
+            NumberType::Complex => write!(f, "{0:#e}", self.value)
+        }
+    }
+}
+
+impl fmt::UpperExp for MathResult {
+    /// Implements the formatted upper exponential output for MathResult.
+    fn fmt(& self, f: & mut fmt::Formatter) -> fmt::Result {
+        match self.result_type {
+            NumberType::Real => write!(f, "{0:#E}", self.value.re),
+            NumberType::Complex => write!(f, "{0:#E}", self.value)
+        }
     }
 }
 

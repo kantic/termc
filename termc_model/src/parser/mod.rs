@@ -25,8 +25,8 @@ impl fmt::Display for ParseError {
     /// Returns the formatted error message.
     fn fmt(& self, f: & mut fmt::Formatter) -> fmt::Result {
         match *self {
-            ParseError::ExpectedError(ref tmpl) => write!(f, "{}", tmpl),
-            ParseError::InputError(ref e) => write!(f, "{}", e)
+            ParseError::ExpectedError(ref tmpl) => write!(f, "{0}", tmpl),
+            ParseError::InputError(ref e) => write!(f, "{0}", e)
         }
     }
 }
@@ -110,7 +110,7 @@ impl<'a> Parser<'a> {
         else {
             match self.tokenizer.peek() {
                 Ok(t) => Err(ParseError::from(ExpectedErrorTemplate::new(self.tokenizer.get_input(),
-                                                                         format!("symbol \"{}\"", s), Some(format!("\"{}\"", t)), t.get_end_pos()))),
+                                                                         format!("symbol \"{0}\"", s), Some(format!("\"{}\"", t)), t.get_end_pos()))),
                 Err(e) => {
                     match e {
                         TokenError::StreamEndError(_) => Err(ParseError::from(ExpectedErrorTemplate::new(self.tokenizer.get_input(), format!("symbol \"{}\"", s),
@@ -177,12 +177,12 @@ impl<'a> Parser<'a> {
                     }
                     else {
                         Err(ParseError::from(ExpectedErrorTemplate::new(self.tokenizer.get_input(), "unary operation",
-                                                                        Some(format!("non-unary operation \"{}\"", t)), t.get_end_pos())))
+                                                                        Some(format!("non-unary operation \"{0}\"", t)), t.get_end_pos())))
                     }
                 },
                 _ => {
                     Err(ParseError::from(ExpectedErrorTemplate::new(self.tokenizer.get_input(), "operand (number, constant, function call) or an unary operation",
-                                                                    Some(format!("unexpected symbol \"{}\"", t)), t.get_end_pos())))
+                                                                    Some(format!("unexpected symbol \"{0}\"", t)), t.get_end_pos())))
                 }
             }
         }
@@ -243,7 +243,7 @@ impl<'a> Parser<'a> {
                 // return an error
                 let peeked = try!(self.tokenizer.peek());  // this should be safe because it has been tested for eof
                 return Err(ParseError::from(ExpectedErrorTemplate::new(self.tokenizer.get_input(), "\",\" or \")\"",
-                                                                       Some(format!("\"{}\"", peeked)), peeked.get_end_pos())));
+                                                                       Some(format!("\"{0}\"", peeked)), peeked.get_end_pos())));
             }
         }
 
@@ -325,7 +325,7 @@ impl<'a> Parser<'a> {
                     }
                     else {
                         return Err(ParseError::from(ExpectedErrorTemplate::new(self.tokenizer.get_input(), "unary operation",
-                                                                               Some(format!("non-unary operation \"{}\"", elem.content)), elem.content.get_end_pos())));
+                                                                               Some(format!("non-unary operation \"{0}\"", elem.content)), elem.content.get_end_pos())));
                     }
                 }
                 else {
@@ -374,7 +374,7 @@ impl<'a> Parser<'a> {
             }
             else {
                 Err(ParseError::from(ExpectedErrorTemplate::new(self.tokenizer.get_input(), "unary operation",
-                                                                Some(format!("non-unary operation \"{}\"", t.content)), t.content.get_end_pos())))
+                                                                Some(format!("non-unary operation \"{0}\"", t.content)), t.content.get_end_pos())))
             }
         }
         else if t_type == TokenType::Number(NumberType::Real) || t_type == TokenType::Number(NumberType::Complex) ||
@@ -385,15 +385,15 @@ impl<'a> Parser<'a> {
         }
         else if t_type == TokenType::Symbol(SymbolicTokenType::UnknownConstant) {
             Err(ParseError::from(ExpectedErrorTemplate::new(self.tokenizer.get_input(), "unary operation or operand",
-                                                            Some(format!("undefined constant \"{}\"", t.content)), t.content.get_end_pos())))
+                                                            Some(format!("undefined constant \"{0}\"", t.content)), t.content.get_end_pos())))
         }
         else if t_type == TokenType::Symbol(SymbolicTokenType::UnknownFunction) {
             Err(ParseError::from(ExpectedErrorTemplate::new(self.tokenizer.get_input(), "unary operation or operand",
-                                                            Some(format!("undefined function \"{}\"", t.content)), t.content.get_end_pos())))
+                                                            Some(format!("undefined function \"{0}\"", t.content)), t.content.get_end_pos())))
         }
         else {
             Err(ParseError::from(ExpectedErrorTemplate::new(self.tokenizer.get_input(), "unary operation or operand",
-                                                            Some(format!("unexpected symbol \"{}\"", t.content)), t.content.get_end_pos())))
+                                                            Some(format!("unexpected symbol \"{0}\"", t.content)), t.content.get_end_pos())))
         }
     }
 }

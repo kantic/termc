@@ -1,5 +1,7 @@
 use std::fs::File;
 use std::io::{Read, Write};
+use std::fmt;
+use std::error::Error;
 use serde_json;
 use regex::Regex;
 use termc_model::math_context::MathContext;
@@ -19,8 +21,47 @@ pub enum CommandType {
     Format(FormatType)
 }
 
+/// The CommandError enum.
+#[derive(Debug)]
+pub enum CommandError {
+    /// Error that occurs when an unknown format is requested (e.g. the user types: "format abc")
+    FormatError(String)
+}
+
+impl Error for CommandError {
+    /// Returns the description of the error.
+    fn description(& self) -> & str {
+        match *self {
+            CommandError::FormatError(_) => "Unknown number format.",
+        }
+    }
+
+    /// Returns the preceding error.
+    fn cause(& self) -> Option<& Error> {
+        match *self {
+            CommandError::FormatError(_) => None,
+        }
+    }
+}
+
+impl fmt::Display for CommandError {
+    /// Implements the Display trait for CommandError.
+    fn fmt(& self, f: & mut fmt::Formatter) -> fmt::Result {
+        match self {
+            &CommandError::FormatError(ref form) => {
+                let c = form.chars().count() - 1;
+                let mut spaces = String::new();
+                for _ in 0..c {
+                    spaces.push(' ');
+                }
+                write!(f, "           {0}^~~~ Error: Unknown format \"{1}\"", spaces, form)
+            }
+        }
+    }
+}
+
 /// Checks whether the specified input string represents a command.
-pub fn check_for_command<T: TerminalUI>(s: & str, context: & mut MathContext, terminal: & mut T) -> Option<CommandType> {
+pub fn check_for_command<T: TerminalUI>(s: & str, context: & mut MathContext, terminal: & mut T) -> Result<Option<CommandType>, CommandError> {
 
     lazy_static!{
         static ref REGEX_EXIT : Regex = Regex::new("^exit$").unwrap();
@@ -30,25 +71,30 @@ pub fn check_for_command<T: TerminalUI>(s: & str, context: & mut MathContext, te
     }
 
     if REGEX_EXIT.is_match(s) {
-        Some(CommandType::Exit)
+        Ok(Some(CommandType::Exit))
     }
     else if let Some(cap) = REGEX_LOAD.captures(s) {
         let path = cap["path"].to_string();
         load_context(&path, context, terminal);
-        Some(CommandType::Load(path))
+        Ok(Some(CommandType::Load(path)))
     }
     else if let Some(cap) = REGEX_SAVE.captures(s) {
         let path = cap["path"].to_string();
         save_context(&path, context, terminal);
-        Some(CommandType::Save(path))
+        Ok(Some(CommandType::Save(path)))
     }
     else if let Some(cap) = REGEX_FORMAT.captures(s) {
         let ft = FormatType::from(&cap["format"]);
-        switch_format(terminal, ft.clone());
-        Some(CommandType::Format(ft))
+        match ft {
+            FormatType::Unknown => Err(CommandError::FormatError(cap["format"].to_string())),
+            _ => {
+                switch_format(terminal, ft.clone());
+                Ok(Some(CommandType::Format(ft)))
+            }
+        }
     }
     else {
-        None
+        Ok(None)
     }
 }
 

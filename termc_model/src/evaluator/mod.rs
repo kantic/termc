@@ -7,7 +7,6 @@ use std::fmt;
 use std::error::Error;
 use std::collections::HashSet;
 use error_templates::ExpectedErrorTemplate;
-use std::num::ParseFloatError;
 use num::complex::Complex;
 use math_context::{MathContext, OperationType, FunctionType};
 use token::{Token, TokenType, SymbolicTokenType, NumberType};
@@ -20,9 +19,6 @@ pub enum EvaluationError {
     /// Error if a token occurs that is not of the expected type.
     /// Arguments: ExpectedErrorTemplate instance.
     ExpectedError(ExpectedErrorTemplate),
-    /// Error if a string could not be parsed to a float.
-    /// Arguments: ParseFloatError instance.
-    NumberError(ParseFloatError),
     /// General evaluation errors.
     /// Arguments: error message.
     GeneralError(String)
@@ -33,9 +29,8 @@ impl fmt::Display for EvaluationError {
     /// Returns the formatted error message.
     fn fmt(& self, f: & mut fmt::Formatter) -> fmt::Result {
         match *self {
-            EvaluationError::ExpectedError(ref tmpl) => write!(f, "{}", tmpl),
-            EvaluationError::NumberError(ref e) => write!(f, "{}", e),
-            EvaluationError::GeneralError(ref m) => write!(f, "{}", m)
+            EvaluationError::ExpectedError(ref tmpl) => write!(f, "{0}", tmpl),
+            EvaluationError::GeneralError(ref m) => write!(f, "{0}", m)
         }
     }
 }
@@ -45,14 +40,6 @@ impl From<ExpectedErrorTemplate> for EvaluationError {
     /// Converts an ExpectedErrorTemplate into an EvaluationError.
     fn from(tmpl: ExpectedErrorTemplate) -> EvaluationError {
         EvaluationError::ExpectedError(tmpl)
-    }
-}
-
-impl From<ParseFloatError> for EvaluationError {
-
-    /// Converts a ParseFloatError into an EvaluationError.
-    fn from(err: ParseFloatError) -> EvaluationError {
-        EvaluationError::NumberError(err)
     }
 }
 
@@ -78,7 +65,6 @@ impl Error for EvaluationError {
     fn description(& self) -> & str {
         match *self {
             EvaluationError::ExpectedError(_) => "Expected a symbol.",
-            EvaluationError::NumberError(_) => "A number could not be parsed.",
             EvaluationError::GeneralError(_) => "An error occurred in the evaluation process."
         }
     }
@@ -87,7 +73,6 @@ impl Error for EvaluationError {
     fn cause(& self) -> Option<& Error> {
         match *self {
             EvaluationError::ExpectedError(_) => None,
-            EvaluationError::NumberError(ref err) => Some(err),
             EvaluationError::GeneralError(_) => None
         }
     }
@@ -137,6 +122,95 @@ pub struct Evaluator<'a> {
     context: &'a mut MathContext
 }
 
+/// Provides parse-interface from strings.
+trait RadixParse {
+    /// The output type (Self for most purposes).
+    type Output;
+    /// Parses the specified string. If the parsing-process succeeds, a value of type Output is returned.
+    /// Otherwise, an EvaluationError is returned which marks the specified position end_pos.
+    fn parse_float(s: String, end_pos: u32) -> Result<Self::Output, EvaluationError>;
+}
+
+macro_rules! parse_radix {
+    ($s:ident, $base:expr, $end_pos:ident) => {{
+    // s: the string to be parsed
+    // base: the base of the number system (e.g. 2 (binary), 8 (octal) or 16 (hexadecimal))
+    // end_pos: the end position of s in the user input string (for error message generation)
+
+        // remove the format prefix ("0b", "0x" or "0o")
+        let mut counter = 2;
+        let s_clean : String = $s.chars().skip_while(|_| {let ret = counter > 0; counter -= 1; ret} ).collect();
+        let mut v : Vec<&str> = s_clean.split('.').collect();
+
+        // initialise parsed result with 0
+        let mut result : f64 = 0.0_f64;
+        let mut is_err = false;
+
+        if v.len() > 2 {
+            // a valid number string can contain only one ".", e.g. "15.75",
+            // and therefore the split string should at most contain two elements
+            is_err = true;
+        }
+        else {
+            if v.len() == 2 {
+                // len == 2 => the number string is of the form <xxx>.<xxx>, here we parse the part after the "."
+                let post = v.pop().unwrap();
+                if post.chars().count() > 0 {
+                    let count = post.chars().count() as i32;
+                    let f = i64::from_str_radix(post, $base);
+                    match f {
+                        Ok(n) => result += (n as f64) * ($base as f64).powf(-count as f64),
+                        Err(_) => is_err = true
+                    }
+                }
+            }
+
+            if v.len() > 0 {
+                // here, we parse the parse the part before the "."
+                let pre = v.pop().unwrap();
+                if pre.chars().count() > 0 {
+                    let f = i64::from_str_radix(pre, $base);
+                    match f {
+                        Ok(n) => result += n as f64,
+                        Err(_) => is_err = true
+                    }
+                }
+            }
+        }
+
+        if is_err {
+            Err(EvaluationError::from(ExpectedErrorTemplate::new($s.clone(), "literal number", Some("Invalid literal symbol(s)".to_string()),
+                                                                 $end_pos)))
+        }
+        else {
+            Ok(result)
+        }
+    }}
+}
+
+impl RadixParse for f64 {
+    type Output = Self;
+    /// Implements the RadixParse trait for the f64 type.
+    fn parse_float(s: String, end_pos: u32) -> Result<Self::Output, EvaluationError> {
+        if s.starts_with("0x") {
+            parse_radix!(s, 16_u32, end_pos)
+        }
+        else if s.starts_with("0o") {
+            parse_radix!(s, 8_u32, end_pos)
+        }
+        else if s.starts_with("0b") {
+            parse_radix!(s, 2_u32, end_pos)
+        }
+        else {
+            match f64::from_str(&s) {
+                Ok(f) => Ok(f),
+                Err(_) => Err(EvaluationError::from(ExpectedErrorTemplate::new(s, "literal number", Some("Invalid literal symbol(s)".to_string()),
+                                                                                   end_pos)))
+            }
+        }
+    }
+}
+
 impl<'a> Evaluator<'a> {
 
     /// Creates a new Evaluator instance.
@@ -161,12 +235,12 @@ impl<'a> Evaluator<'a> {
 
                     TokenType::Symbol(SymbolicTokenType::UnknownConstant) => {
                         Err(EvaluationError::from(ExpectedErrorTemplate::new(input, "built-in or user defined constant", Some(
-                            format!("unknown constant \"{}\"", sym.content)), sym.content.get_end_pos())))
+                            format!("unknown constant \"{0}\"", sym.content)), sym.content.get_end_pos())))
                     },
 
                     TokenType::Symbol(SymbolicTokenType::UnknownFunction) => {
                         Err(EvaluationError::from(ExpectedErrorTemplate::new(input, "built-in or user defined function", Some(
-                            format!("unknown function \"{}(...)\"", sym.content)), sym.content.get_end_pos())))
+                            format!("unknown function \"{0}(...)\"", sym.content)), sym.content.get_end_pos())))
                     },
 
                     _ => {
@@ -185,7 +259,7 @@ impl<'a> Evaluator<'a> {
 
         match token_type {
             TokenType::Number(num_type) => {
-                let x = try!(f64::from_str(subtree.content.get_value()));
+                let x = f64::parse_float(subtree.content.get_value().to_string(), subtree.content.get_end_pos())?;
                 match num_type {
                             NumberType::Real => Ok(EvaluationResult::from(x)),
                             NumberType::Complex => Ok(EvaluationResult::from(x * self.context.get_constant_value("i").unwrap().value))
@@ -205,13 +279,13 @@ impl<'a> Evaluator<'a> {
                 if !(subtree.successors.len() > 0) {
                     // this operation has no operands => error
                     return Err(EvaluationError::from(ExpectedErrorTemplate::new(
-                        input, "operands", Some(format!("operation \"{}\" without any operands", subtree.content)), subtree.content.get_end_pos())))
+                        input, "operands", Some(format!("operation \"{0}\" without any operands", subtree.content)), subtree.content.get_end_pos())))
                 }
 
                 if op_type == OperationType::Assign {
                     if subtree.successors.len() != 2 {
                         return Err(EvaluationError::from(ExpectedErrorTemplate::new(input, "2 arguments", Some(
-                            format!("{} arguments", subtree.successors.len())), subtree.content.get_end_pos())))
+                            format!("{0} arguments", subtree.successors.len())), subtree.content.get_end_pos())))
                     }
 
                     let left_val_sym = try!(self.error_if_built_in(subtree.successors[0].as_ref(), input));
@@ -235,7 +309,7 @@ impl<'a> Evaluator<'a> {
 
                         _ => {
                             Err(EvaluationError::from(ExpectedErrorTemplate::new(input, "constant or function definition", Some(
-                            format!("expression \"{}\"", left_val_sym.content)), left_val_sym.content.get_end_pos())))
+                            format!("expression \"{0}\"", left_val_sym.content)), left_val_sym.content.get_end_pos())))
                         }
                     }
                 }
@@ -254,7 +328,7 @@ impl<'a> Evaluator<'a> {
                             OperationType::Pow => Ok(EvaluationResult::from(MathContext::operation_pow(& left_val_num, & right_val_num))),
                             OperationType::Mod => Ok(EvaluationResult::from(MathContext::operation_mod(& left_val_num, & right_val_num))),
                             _ => Err(EvaluationError::from(ExpectedErrorTemplate::new(input, "binary mathematical operation",
-                                                                                      Some(format!("operation \"{}\"", subtree.content)),
+                                                                                      Some(format!("operation \"{0}\"", subtree.content)),
                                                                                       subtree.content.get_end_pos())))
                         }
                     }
@@ -263,7 +337,7 @@ impl<'a> Evaluator<'a> {
                         OperationType::Add => Ok(EvaluationResult::from(MathContext::operation_add(& MathResult::from(0.0), & left_val_num))),
                         OperationType::Sub => Ok(EvaluationResult::from(MathContext::operation_sub(& MathResult::from(0.0), & left_val_num))),
                         _ => Err(EvaluationError::from(ExpectedErrorTemplate::new(input, "unary operation",
-                                                                                  Some(format!("non-unary operation \"{}\"", subtree.content)),
+                                                                                  Some(format!("non-unary operation \"{0}\"", subtree.content)),
                                                                                   subtree.content.get_end_pos())))
                         }
                     }
@@ -277,8 +351,8 @@ impl<'a> Evaluator<'a> {
                 let n_successors = subtree.successors.len() as u32;
                 let n_args = self.context.get_function_arg_num(subtree.content.get_value()).unwrap();
                 if n_successors != n_args {
-                    return Err(EvaluationError::from(ExpectedErrorTemplate::new(input, format!("{} argument(s)", n_args),
-                                                                                Some(format!("{} argument(s)", n_successors)),
+                    return Err(EvaluationError::from(ExpectedErrorTemplate::new(input, format!("{0} argument(s)", n_args),
+                                                                                Some(format!("{0} argument(s)", n_successors)),
                                                                                 subtree.content.get_end_pos())));
                 }
 
@@ -327,7 +401,7 @@ impl<'a> Evaluator<'a> {
                                 self.recursive_evaluate(& x, & f_input)
                             },
                             None => Err(EvaluationError::from(ExpectedErrorTemplate::new(input, "function call of user defined function", Some(
-                                format!("expression {}", subtree.content)), subtree.content.get_end_pos())))
+                                format!("expression {0}", subtree.content)), subtree.content.get_end_pos())))
                         }
                     }
                 }
@@ -343,7 +417,7 @@ impl<'a> Evaluator<'a> {
 
             _ => {  // punctuation and unknown tokens should not occur in the evaluation method
                 Err(EvaluationError::from(ExpectedErrorTemplate::new(input, "function or operation", Some(
-                    format!("symbol {}", subtree.content)), subtree.content.get_end_pos())))
+                    format!("symbol {0}", subtree.content)), subtree.content.get_end_pos())))
             }
         }
     }
@@ -358,13 +432,13 @@ impl<'a> Evaluator<'a> {
                 match n.content.get_type() {
 
                     TokenType::Symbol(SymbolicTokenType::UnknownConstant) => Err(EvaluationError::from(ExpectedErrorTemplate::new(
-                        input, "built-in or user defined constant", Some(format!("unknown constant \"{}\"", n.content)), n.content.get_end_pos()))),
+                        input, "built-in or user defined constant", Some(format!("unknown constant \"{0}\"", n.content)), n.content.get_end_pos()))),
 
                     TokenType::Symbol(SymbolicTokenType::UnknownFunction) => Err(EvaluationError::from(ExpectedErrorTemplate::new(
-                        input, "built-in or user defined function", Some(format!("unknown function \"{}(...)\"", n.content)), n.content.get_end_pos()))),
+                        input, "built-in or user defined function", Some(format!("unknown function \"{0}(...)\"", n.content)), n.content.get_end_pos()))),
 
                     _ => Err(EvaluationError::from(ExpectedErrorTemplate::new(
-                        input, "non-symbolic expression", Some(format!("symbolic expression \"{}\"", n.content)),n.content.get_end_pos())))
+                        input, "non-symbolic expression", Some(format!("symbolic expression \"{0}\"", n.content)),n.content.get_end_pos())))
                 }
             }
         }
@@ -377,7 +451,7 @@ impl<'a> Evaluator<'a> {
         if self.context.is_built_in_function(n.content.get_value()) || self.context.is_built_in_constant(n.content.get_value()) ||
             n.content.get_type() == TokenType::Constant {
             Err(EvaluationError::from(ExpectedErrorTemplate::new(input, "new constant name or function name", Some(
-                format!("built-in expression \"{}\"", n.content)), n.content.get_end_pos())))
+                format!("built-in expression \"{0}\"", n.content)), n.content.get_end_pos())))
         }
         else {
             Ok(n)
@@ -391,14 +465,14 @@ impl<'a> Evaluator<'a> {
         for succ in &n.successors {
             if succ.successors.len() != 0 {
                 return Err(EvaluationError::from(ExpectedErrorTemplate::new(input, "function definition", Some(
-                    format!("expression \"{}\"", n.content)), n.content.get_end_pos())))
+                    format!("expression \"{0}\"", n.content)), n.content.get_end_pos())))
             }
 
             if succ.content.get_type() == TokenType::Number(NumberType::Real) || succ.content.get_type() == TokenType::Number(NumberType::Complex) ||
                 succ.content.get_type() == TokenType::Function || succ.content.get_type() == TokenType::UserFunction ||
                 succ.content.get_type() == TokenType::Symbol(SymbolicTokenType::UnknownFunction){
                 return Err(EvaluationError::from(ExpectedErrorTemplate::new(input, "symbolic function argument", Some(
-                    format!("expression \"{}\"", succ.content)), succ.content.get_end_pos())))
+                    format!("expression \"{0}\"", succ.content)), succ.content.get_end_pos())))
             }
 
             args.push(String::from(succ.content.get_value()));
@@ -421,7 +495,7 @@ impl<'a> Evaluator<'a> {
             || self.context.is_constant(n.content.get_value()) || self.context.is_function(n.content.get_value()) || self.context.is_operation(n.content.get_value())
             || args.iter().any(|x| x == n.content.get_value())) {
             Err(EvaluationError::from(ExpectedErrorTemplate::new(input, "non-symbolic expression", Some(
-                    format!("symbolic expression \"{}\"", n.content)), n.content.get_end_pos())))
+                    format!("symbolic expression \"{0}\"", n.content)), n.content.get_end_pos())))
         }
         else {
             for succ in  &n.successors {

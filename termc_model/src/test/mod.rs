@@ -42,6 +42,144 @@ fn tst_get_result() {
     assert!(result.value.re - 0.0 < TEST_BOUND);
     assert!(result.value.im + 4800000.0 < TEST_BOUND);
 
+    // test number in binary notation
+    let result = get_result("0b101", & mut context);
+    assert!(result.is_ok());
+    let result = result.ok().unwrap();
+    assert!(result.is_some());
+    let result = result.unwrap();
+    assert!(result.result_type == NumberType::Real);
+    assert!(result.value.re - 5.0 < TEST_BOUND);
+    assert!(result.value.im - 0.0 < TEST_BOUND);
+
+    let result = get_result("0b11i", & mut context);
+    assert!(result.is_ok());
+    let result = result.ok().unwrap();
+    assert!(result.is_some());
+    let result = result.unwrap();
+    assert!(result.result_type == NumberType::Complex);
+    assert!(result.value.re - 0.0 < TEST_BOUND);
+    assert!(result.value.im - 3.0 < TEST_BOUND);
+
+    let result = get_result("-0b1010.11-0b11.1i", & mut context);
+    assert!(result.is_ok());
+    let result = result.ok().unwrap();
+    assert!(result.is_some());
+    let result = result.unwrap();
+    assert!(result.result_type == NumberType::Complex);
+    assert!(result.value.re + 10.75 < TEST_BOUND);
+    assert!(result.value.im + 3.5 < TEST_BOUND);
+
+    let result = get_result("-0b.1+0b.i", & mut context);
+    assert!(result.is_ok());
+    let result = result.ok().unwrap();
+    assert!(result.is_some());
+    let result = result.unwrap();
+    assert!(result.result_type == NumberType::Complex);
+    assert!(result.value.re + 0.5 < TEST_BOUND);
+    assert!(result.value.im - 0.0 < TEST_BOUND);
+
+    let result = get_result("0b111.", & mut context);
+    assert!(result.is_ok());
+    let result = result.ok().unwrap();
+    assert!(result.is_some());
+    let result = result.unwrap();
+    assert!(result.result_type == NumberType::Real);
+    assert!(result.value.re - 7.0 < TEST_BOUND);
+    assert!(result.value.im - 0.0 < TEST_BOUND);
+
+    // test number in octal notation
+    let result = get_result("0o775", & mut context);
+    assert!(result.is_ok());
+    let result = result.ok().unwrap();
+    assert!(result.is_some());
+    let result = result.unwrap();
+    assert!(result.result_type == NumberType::Real);
+    assert!(result.value.re - 509.0 < TEST_BOUND);
+    assert!(result.value.im - 0.0 < TEST_BOUND);
+
+    let result = get_result("0o457i", & mut context);
+    assert!(result.is_ok());
+    let result = result.ok().unwrap();
+    assert!(result.is_some());
+    let result = result.unwrap();
+    assert!(result.result_type == NumberType::Complex);
+    assert!(result.value.re - 0.0 < TEST_BOUND);
+    assert!(result.value.im - 303.0 < TEST_BOUND);
+
+    let result = get_result("-0o124.73-0o1.1i", & mut context);
+    assert!(result.is_ok());
+    let result = result.ok().unwrap();
+    assert!(result.is_some());
+    let result = result.unwrap();
+    assert!(result.result_type == NumberType::Complex);
+    assert!(result.value.re + 83.921875 < TEST_BOUND);
+    assert!(result.value.im + 1.125 < TEST_BOUND);
+
+    let result = get_result("-0o.3+0o.i", & mut context);
+    assert!(result.is_ok());
+    let result = result.ok().unwrap();
+    assert!(result.is_some());
+    let result = result.unwrap();
+    assert!(result.result_type == NumberType::Complex);
+    assert!(result.value.re + 0.375 < TEST_BOUND);
+    assert!(result.value.im - 0.0 < TEST_BOUND);
+
+    let result = get_result("0o111.", & mut context);
+    assert!(result.is_ok());
+    let result = result.ok().unwrap();
+    assert!(result.is_some());
+    let result = result.unwrap();
+    assert!(result.result_type == NumberType::Real);
+    assert!(result.value.re - 73.0 < TEST_BOUND);
+    assert!(result.value.im - 0.0 < TEST_BOUND);
+
+    // test number in hexadecimal notation
+    let result = get_result("0xa1b", & mut context);
+    assert!(result.is_ok());
+    let result = result.ok().unwrap();
+    assert!(result.is_some());
+    let result = result.unwrap();
+    assert!(result.result_type == NumberType::Real);
+    assert!(result.value.re - 2587.0 < TEST_BOUND);
+    assert!(result.value.im - 0.0 < TEST_BOUND);
+
+    let result = get_result("0xabci", & mut context);
+    assert!(result.is_ok());
+    let result = result.ok().unwrap();
+    assert!(result.is_some());
+    let result = result.unwrap();
+    assert!(result.result_type == NumberType::Complex);
+    assert!(result.value.re - 0.0 < TEST_BOUND);
+    assert!(result.value.im - 2748.0 < TEST_BOUND);
+
+    let result = get_result("-0x92.7c-0x3.00bi", & mut context);
+    assert!(result.is_ok());
+    let result = result.ok().unwrap();
+    assert!(result.is_some());
+    let result = result.unwrap();
+    assert!(result.result_type == NumberType::Complex);
+    assert!(result.value.re + 146.484375 < TEST_BOUND);
+    assert!(result.value.im + 3.002685546875 < TEST_BOUND);
+
+    let result = get_result("-0x.e+0x.i", & mut context);
+    assert!(result.is_ok());
+    let result = result.ok().unwrap();
+    assert!(result.is_some());
+    let result = result.unwrap();
+    assert!(result.result_type == NumberType::Complex);
+    assert!(result.value.re + 0.875 < TEST_BOUND);
+    assert!(result.value.im - 0.0 < TEST_BOUND);
+
+    let result = get_result("0xf.", & mut context);
+    assert!(result.is_ok());
+    let result = result.ok().unwrap();
+    assert!(result.is_some());
+    let result = result.unwrap();
+    assert!(result.result_type == NumberType::Real);
+    assert!(result.value.re - 15.0 < TEST_BOUND);
+    assert!(result.value.im - 0.0 < TEST_BOUND);
+
     // test constant pi
     let result = get_result("pi", & mut context);
     assert!(result.is_ok());
@@ -730,6 +868,25 @@ fn tst_get_result() {
     assert!(result.is_err());
     let msg = format!("{}", result.err().unwrap());
     assert!(msg == "Error: Expected distinct arguments.\nh(x, y, x) = x^2+y\n^~~~ Found: function definition with partly equal arguments");
+    let mut context = MathContext::new();
+
+    // test wrong digit in binary number
+    let result = get_result("0b10201", & mut context);
+    assert!(result.is_err());
+    let msg = format!("{}", result.err().unwrap());
+    assert!(msg == "Error: Expected literal number.\n0b10201\n      ^~~~ Found: Invalid literal symbol(s)");
+
+    // test wrong digit in binary number
+    let result = get_result("0o43927", & mut context);
+    assert!(result.is_err());
+    let msg = format!("{}", result.err().unwrap());
+    assert!(msg == "Error: Expected literal number.\n0o43927\n      ^~~~ Found: Invalid literal symbol(s)");
+
+    // test wrong digit in hexadecimal number
+    let result = get_result("0x25a3u", & mut context);
+    assert!(result.is_err());
+    let msg = format!("{}", result.err().unwrap());
+    assert!(msg == "Error: Expected literal number.\n0x25a3u\n      ^~~~ Found: Invalid literal symbol(s)");
 }
 
 #[test]

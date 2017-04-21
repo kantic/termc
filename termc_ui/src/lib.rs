@@ -1,13 +1,6 @@
 extern crate termc_model;
 extern crate num;
 
-//pub trait FormatIEEE754 : traits::Float + std::ops::Deref<Target = f64> {
-//    fn fmt(&self) -> String {
-//        let pattern : u64 = unsafe {transmute::<f64, u64>(*self.deref())};
-//        format!("{0:#b}", pattern)
-//    }
-//}
-
 use std::char;
 use std::error::Error;
 use std::fmt;
@@ -37,7 +30,9 @@ pub enum FormatType {
     Oct,
     Hex,
     Bin,
-    IEEE754
+    IEEE754,
+    Exp,
+    Unknown
 }
 
 impl<'a> From<&'a str> for FormatType {
@@ -54,8 +49,14 @@ impl<'a> From<&'a str> for FormatType {
         else if s == "ieee754" {
             FormatType::IEEE754
         }
-        else {
+        else if s == "exp" {
+            FormatType::Exp
+        }
+        else if s == "dec" {
             FormatType::Dec
+        }
+        else {
+            FormatType::Unknown
         }
     }
 }
@@ -116,19 +117,21 @@ impl FormatIEEE754 for MathResult {
 macro_rules! format_result {
     ($typ:expr, $res:expr) => {{
         match $typ {
-            FormatType::Dec => format!("{0}", $res),
+            FormatType::Dec | FormatType::Unknown => format!("{0}", $res),
             FormatType::Bin => format!("{0:#b}", $res),
             FormatType::Hex => format!("{0:#x}", $res),
             FormatType::Oct => format!("{0:#o}", $res),
-            FormatType::IEEE754 => format!("{0}", $res.ieee754_fmt())
+            FormatType::Exp => format!("{0:E}", $res),
+            FormatType::IEEE754 => format!("{0}", $res.ieee754_fmt()),
         }
     }};
     ($typ:expr, $res:ident, $ans_prefix:ident) => {{
         match $typ {
-            FormatType::Dec => format!("{0}{1}", $ans_prefix, $res),
+            FormatType::Dec | FormatType::Unknown => format!("{0}{1}", $ans_prefix, $res),
             FormatType::Bin => format!("{0}{1:#b}", $ans_prefix, $res),
             FormatType::Hex => format!("{0}{1:#x}", $ans_prefix, $res),
             FormatType::Oct => format!("{0}{1:#o}", $ans_prefix, $res),
+            FormatType::Exp => format!("{0}{1:E}", $ans_prefix, $res),
             FormatType::IEEE754 => format!("{0}{1}", $ans_prefix, $res.ieee754_fmt())
         }
     }}
@@ -151,8 +154,11 @@ pub trait TerminalUI {
     /// Gets the user input and manages the manipulation of the terminal.
     fn get_user_input(& mut self) -> String;
     /// Prints the specified result on the terminal.
-    fn print_result<T: fmt::Display + fmt::Binary + fmt::LowerHex + fmt::UpperHex + fmt::Octal + FormatIEEE754>(& mut self, result: Option<&T>);
-    fn print_results<T: fmt::Display + fmt::Binary + fmt::LowerHex + fmt::UpperHex + fmt::Octal + FormatIEEE754>(& mut self, results: &Vec<T>);
+    fn print_result<T: fmt::Display + fmt::Binary + fmt::LowerHex + fmt::UpperHex + fmt::Octal +
+                        FormatIEEE754 + fmt::LowerExp + fmt::UpperExp>(& mut self, result: Option<&T>);
+    /// Prints the specified results on the terminal, separated with ';'.
+    fn print_results<T: fmt::Display + fmt::Binary + fmt::LowerHex + fmt::UpperHex + fmt::Octal +
+                        FormatIEEE754 + fmt::LowerExp + fmt::UpperExp>(& mut self, results: &Vec<T>);
     /// Prints the specified error on the terminal.
     fn print_error<T: Error>(& mut self, err: T);
     /// Prints the specified string.

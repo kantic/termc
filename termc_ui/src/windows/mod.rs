@@ -39,14 +39,17 @@ impl TerminalUI for TerminalHandle {
     }
 
     /// Prints the specified result on the terminal.
-    fn print_result<T: fmt::Display + fmt::Binary + fmt::LowerHex + fmt::UpperHex + fmt::Octal>(& mut self, result: Option<&T>) {
+    fn print_result<T: fmt::Display + fmt::Binary + fmt::LowerHex + fmt::UpperHex + fmt::Octal +
+                        fmt::LowerExp + fmt::UpperExp>(& mut self, result: Option<&T>) {
         match result {
             Some(r) => println!("{}{}\n", ANS_PREFIX, r),
             None => println!("{}{}\n", ANS_PREFIX, "")
         }
     }
 
-    fn print_results<T: fmt::Display + fmt::Binary + fmt::LowerHex + fmt::UpperHex + fmt::Octal>(& mut self, results: &Vec<T>) {
+    /// Prints the specified results on the terminal, separated with ';'.
+    fn print_results<T: fmt::Display + fmt::Binary + fmt::LowerHex + fmt::UpperHex + fmt::Octal +
+                        fmt::LowerExp + fmt::UpperExp>(& mut self, results: &Vec<T>) {
         let mut conc = String::new();
         for r in results {
             conc += ";" + format_result!(self.format_type, r);
