@@ -131,7 +131,7 @@ impl TerminalHandle {
         }
 
         let (x, y) = (self.x, self.y);
-        self.control_terminal(& format!("{}", termion::cursor::Goto(x, y)), flush);
+        self.control_terminal(& format!("{0}", termion::cursor::Goto(x, y)), flush);
     }
 
     /// Moves the cursor one step to the right.
@@ -157,7 +157,7 @@ impl TerminalHandle {
         }
 
         let (x, y) = (self.x, self.y);
-        self.control_terminal(& format!("{}", termion::cursor::Goto(x, y)), flush);
+        self.control_terminal(& format!("{0}", termion::cursor::Goto(x, y)), flush);
     }
 
     /// Clears the current user input from the terminal and leaves the input base line with only
@@ -168,14 +168,14 @@ impl TerminalHandle {
         let lines : u16 = len / term_size.0 + 1;
         for i in 0..lines {
             let y = self.input_base_line + i;
-            self.control_terminal(& format!("{}{}", termion::cursor::Goto(1, y),
+            self.control_terminal(& format!("{0}{1}", termion::cursor::Goto(1, y),
                                   termion::clear::CurrentLine), false);
         }
 
         let input_base_line = self.input_base_line;
         self.x = 1;
         self.y = input_base_line;
-        self.control_terminal(& format!("{}", termion::cursor::Goto(1, input_base_line)), false);
+        self.control_terminal(& format!("{0}", termion::cursor::Goto(1, input_base_line)), false);
         self.print_terminal_prompt(flush);
     }
 
@@ -203,7 +203,7 @@ impl TerminalHandle {
         self.print_terminal_string(& input_str, false);
         self.x = x;
         self.y = y;
-        self.control_terminal(& format!("{}", termion::cursor::Goto(x, y)), flush);
+        self.control_terminal(& format!("{0}", termion::cursor::Goto(x, y)), flush);
     }
 
     /// Adds the specified character at the current cursor position to the input and the buffer.
@@ -229,7 +229,7 @@ impl TerminalHandle {
         self.print_terminal_string(& input_str, false);
         self.x = x;
         self.y = y;
-        self.control_terminal(& format!("{}", termion::cursor::Goto(x, y)), flush);
+        self.control_terminal(& format!("{0}", termion::cursor::Goto(x, y)), flush);
     }
 
     /// Writes the specified string on the terminal without adding it's content to the buffer.
@@ -252,7 +252,7 @@ impl TerminalHandle {
                         self.input_base_line -= 1;
                     }
                 }
-                write!(stdout, "\n{}", termion::cursor::Goto(1, self.y)).expect(WRT_ERR_MSG);
+                write!(stdout, "\n{0}", termion::cursor::Goto(1, self.y)).expect(WRT_ERR_MSG);
             }
 
             write!(stdout, "{}", line).expect(WRT_ERR_MSG);
@@ -269,7 +269,7 @@ impl TerminalHandle {
                 if self.input_base_line > 1 {
                     self.input_base_line -= 1;
                 }
-                write!(stdout, "\n{}", termion::cursor::Goto(self.x, self.y)).expect(WRT_ERR_MSG);
+                write!(stdout, "\n{0}", termion::cursor::Goto(self.x, self.y)).expect(WRT_ERR_MSG);
             }
         }
 
@@ -304,7 +304,7 @@ impl TerminalHandle {
             }
         }
         let (x, y) = (self.x, self.y);
-        self.control_terminal(& format!("\n\n{}", termion::cursor::Goto(x, y)), true);
+        self.control_terminal(& format!("\n\n{0}", termion::cursor::Goto(x, y)), true);
     }
 }
 
@@ -323,7 +323,7 @@ impl TerminalUI for TerminalHandle {
             TerminalMode::Interactive => {
                 self.x = 1;
                 self.y = 1;
-                self.control_terminal(& format!("{}{}", termion::clear::All, termion::cursor::Goto(1, 1)), true);
+                self.control_terminal(& format!("{0}{1}", termion::clear::All, termion::cursor::Goto(1, 1)), true);
             }
         }
     }
@@ -339,7 +339,7 @@ impl TerminalUI for TerminalHandle {
             }
         }
         let y = self.y;
-        self.control_terminal(& format!("\n{}", termion::cursor::Goto(1, y)), true);
+        self.control_terminal(& format!("\n{0}", termion::cursor::Goto(1, y)), true);
     }
 
     /// Gets the user input and manages the manipulation of the terminal.
