@@ -46,7 +46,7 @@ fn get_arguments() -> Vec<String> {
 fn start_call(args: & mut Vec<String>) {
 
     let mut iter = args.iter();
-    let path : String = iter.next().unwrap().to_string();
+    let path : String = iter.next().unwrap().to_string(); // get path of this executable
     let mut terminal = create_terminal_handle(TerminalMode::Call);
     terminal.init();
 
