@@ -21,39 +21,41 @@ use termc_ui::windows::TerminalHandle;
 
 /// The main entry point.
 pub fn main() {
-    let args = get_arguments();
+    let mut args = get_arguments();
 
     // If there are command line arguments given, start in call mode.
     // Otherwise start in interactive mode.
-    if args.len() > 0 {
-        start_call(& args);
+    if args.len() > 1 {
+        start_call(& mut args);
     }
     else {
-        start_interactive();
+        let path = args.pop().unwrap(); // get path of this executable
+        start_interactive(path);
     }
 }
 
 /// Returns the math expression command line arguments.
 fn get_arguments() -> Vec<String> {
 
-    let mut args_it = env::args();
-    args_it.next(); // skip the first argument (path of the executable)
+    let args_it = env::args();
     args_it.collect()
 }
 
 /// Starts termc in command line call mode.
 /// Prints a ';'-separated list with the results of the specified mathematical expressions.
-fn start_call(args: & Vec<String>) {
+fn start_call(args: & mut Vec<String>) {
 
+    let mut iter = args.iter();
+    let path : String = iter.next().unwrap().to_string();
     let mut terminal = create_terminal_handle(TerminalMode::Call);
     terminal.init();
 
     let mut results : Vec<MathResult> = Vec::new();
     let mut context = MathContext::new();
 
-    for (i, arg) in args.iter().enumerate() {
+    for (i, arg) in iter.enumerate() {
 
-        match check_for_command::<TerminalHandle>(arg, &mut context, &mut terminal) {
+        match check_for_command::<TerminalHandle>(arg, &mut context, &mut terminal, & path) {
             Ok(k) => {
                 match k {
                     Some(c) => {
@@ -89,7 +91,7 @@ fn start_call(args: & Vec<String>) {
 }
 
 /// Starts termc in command line interactive mode.
-fn start_interactive() {
+fn start_interactive(path: String) {
 
     let mut terminal = create_terminal_handle(TerminalMode::Interactive);
     terminal.init();
@@ -104,7 +106,7 @@ fn start_interactive() {
             continue;
         }
 
-        match check_for_command(user_input, &mut context, &mut terminal) {
+        match check_for_command(user_input, &mut context, &mut terminal, & path) {
             Ok(k) => {
                 match k {
                     Some(c) => {

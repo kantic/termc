@@ -1,6 +1,7 @@
 use std::fs::File;
 use std::io::{Read, Write};
 use std::fmt;
+use std::path::Path;
 use std::error::Error;
 use serde_json;
 use regex::Regex;
@@ -49,7 +50,7 @@ impl fmt::Display for CommandError {
     fn fmt(& self, f: & mut fmt::Formatter) -> fmt::Result {
         match self {
             &CommandError::FormatError(ref form) => {
-                let c = form.chars().count() - 1;
+                let c = (form.chars().count() as i32) - 1;
                 let mut spaces = String::new();
                 for _ in 0..c {
                     spaces.push(' ');
@@ -61,7 +62,7 @@ impl fmt::Display for CommandError {
 }
 
 /// Checks whether the specified input string represents a command.
-pub fn check_for_command<T: TerminalUI>(s: & str, context: & mut MathContext, terminal: & mut T) -> Result<Option<CommandType>, CommandError> {
+pub fn check_for_command<T: TerminalUI>(s: & str, context: & mut MathContext, terminal: & mut T, default_path: &str) -> Result<Option<CommandType>, CommandError> {
 
     lazy_static!{
         static ref REGEX_EXIT : Regex = Regex::new("^exit$").unwrap();
@@ -70,27 +71,43 @@ pub fn check_for_command<T: TerminalUI>(s: & str, context: & mut MathContext, te
         static ref REGEX_FORMAT : Regex = Regex::new(r"^format(\s+(?P<format>.*))?$").unwrap();
     }
 
+    let default_fp = Path::new(default_path).parent().unwrap(); // remove termc executable name
+    let default_fn = Path::new("termc_context.json"); // define default file name
+    let default_file = default_fp.join(default_fn).to_str().unwrap().to_string(); // join current path and default file name
+
     if REGEX_EXIT.is_match(s) {
         Ok(Some(CommandType::Exit))
     }
     else if let Some(cap) = REGEX_LOAD.captures(s) {
-        let path = cap["path"].to_string();
+        let path = match cap.name("path") {
+            Some(g) => g.as_str().to_string(), // take user specified file
+            None => default_file // take default file
+        };
         load_context(&path, context, terminal);
         Ok(Some(CommandType::Load(path)))
     }
     else if let Some(cap) = REGEX_SAVE.captures(s) {
-        let path = cap["path"].to_string();
+        let path = match cap.name("path") {
+            Some(g) => g.as_str().to_string(), // take user specified file
+            None => default_file // take default file
+        };
         save_context(&path, context, terminal);
         Ok(Some(CommandType::Save(path)))
     }
     else if let Some(cap) = REGEX_FORMAT.captures(s) {
-        let ft = FormatType::from(&cap["format"]);
-        match ft {
-            FormatType::Unknown => Err(CommandError::FormatError(cap["format"].to_string())),
-            _ => {
-                switch_format(terminal, ft.clone());
-                Ok(Some(CommandType::Format(ft)))
+        let form = cap.name("format");
+        if form.is_some() {
+            let ft = FormatType::from(form.unwrap().as_str());
+            match ft {
+                FormatType::Unknown => Err(CommandError::FormatError(form.unwrap().as_str().to_string())),
+                _ => {
+                    switch_format(terminal, ft.clone());
+                    Ok(Some(CommandType::Format(ft)))
+                }
             }
+        }
+        else {
+            Err(CommandError::FormatError(String::new()))
         }
     }
     else {
