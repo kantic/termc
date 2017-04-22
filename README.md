@@ -52,6 +52,34 @@ $ termc
 ans = 0.025
 ```
 
+### Non-Decimal input and output
+**termc** supports input and output in decimal, binary, octal and hexadecimal system.
+Furthermore, **termc** supports output in the IEEE754 binary format.
+Example:
+```sh
+$ termc
+>>> 0b101.11
+ans = 5.75
+
+>>> format hex
+
+>>> ans
+ans = 0x5.c
+
+>>> 0o753.457
+ans = 0x1eb.978
+
+>>> format ieee754
+
+>>> ans
+ans = 0b100000001111110101110010111100000000000000000000000000000000000
+
+>>> format dec
+
+>>> ans
+ans = 491.591796875
+```
+
 ### User-defined constants
 **termc** supports the definition of custom constants.
 Example:
@@ -84,12 +112,12 @@ $ termc
 
 >>> c = 79.882
 
->>> save /home/kantic/termc.save
+>>> save /home/kantic/termc_context.json
 
 >>> exit
 
 $ termc
->>> load /home/kantic/termc.save
+>>> load /home/kantic/termc_context.json
 
 >>> f(c)
 ans = 6381.133924000001
@@ -133,7 +161,7 @@ $ termc 1+2 5*7 "cos(pi)"
 
 ### Interactive mode
 For this mode, no additional command line arguments are passed to the call of **termc**.
-It will then start the interactive mode.
+It will then start in interactive mode.
 ```sh
 $ termc
 >>> 1+2
