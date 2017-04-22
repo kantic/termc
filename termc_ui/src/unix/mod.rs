@@ -255,7 +255,7 @@ impl TerminalHandle {
                 write!(stdout, "\n{0}", termion::cursor::Goto(1, self.y)).expect(WRT_ERR_MSG);
             }
 
-            write!(stdout, "{}", line).expect(WRT_ERR_MSG);
+            write!(stdout, "{0}", line).expect(WRT_ERR_MSG);
             first_line = false;
         }
 
@@ -423,7 +423,7 @@ impl TerminalUI for TerminalHandle {
                     self.x = PROMPT_LEN + 1;
                     self.y = self.input_base_line;
                     let (x, y) = (self.x, self.y);
-                    self.control_terminal(& format!("{}", termion::cursor::Goto(x, y)), false);
+                    self.control_terminal(& format!("{0}", termion::cursor::Goto(x, y)), false);
                 },
 
                 Key::End => {
@@ -432,7 +432,7 @@ impl TerminalUI for TerminalHandle {
                     self.x = end_pos.0;
                     self.y = end_pos.1;
                     let (x, y) = (self.x, self.y);
-                    self.control_terminal(& format!("{}", termion::cursor::Goto(x, y)), false);
+                    self.control_terminal(& format!("{0}", termion::cursor::Goto(x, y)), false);
                 },
 
                 Key::Char(ENTER_KEY) => {
@@ -444,7 +444,7 @@ impl TerminalUI for TerminalHandle {
                     }
                     self.x = 1;
                     let (x, y) = (self.x, self.y);
-                    self.control_terminal(& format!("\n{}", termion::cursor::Goto(x, y)), true);
+                    self.control_terminal(& format!("\n{0}", termion::cursor::Goto(x, y)), true);
                     break;
                 },
 

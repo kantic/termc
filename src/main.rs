@@ -8,6 +8,7 @@ extern crate regex;
 mod command_library;
 
 use std::env;
+use std::path::Path;
 use termc_model::get_result;
 use termc_model::math_context::MathContext;
 use termc_model::math_result::MathResult;
@@ -41,21 +42,37 @@ fn get_arguments() -> Vec<String> {
     args_it.collect()
 }
 
+macro_rules! compute_default_filepath {
+    ($path_str:expr) => {{
+    // path: path of this executable (first argument given)
+
+        let default_fd = Path::new($path_str).parent().unwrap(); // remove termc executable name
+        let default_fn = Path::new("termc_context.json"); // define default file name
+        default_fd.join(default_fn).to_str().unwrap().to_string() // join current path and default file name
+    }}
+}
+
 /// Starts termc in command line call mode.
 /// Prints a ';'-separated list with the results of the specified mathematical expressions.
 fn start_call(args: & mut Vec<String>) {
 
+    // compute default file-path for the serialization file
     let mut iter = args.iter();
-    let path : String = iter.next().unwrap().to_string(); // get path of this executable
+    let path_str : String = iter.next().unwrap().to_string(); // get path of this executable
+    let default_file = compute_default_filepath!(&path_str);
+
+    // create terminal handle
     let mut terminal = create_terminal_handle(TerminalMode::Call);
     terminal.init();
 
     let mut results : Vec<MathResult> = Vec::new();
     let mut context = MathContext::new();
 
+    // for each argument given, evaluate it and store the results
+    // if an error occurs for any of the given arguments, the evaluation of all arguments will be aborted
     for (i, arg) in iter.enumerate() {
 
-        match check_for_command::<TerminalHandle>(arg, &mut context, &mut terminal, & path) {
+        match check_for_command::<TerminalHandle>(arg, &mut context, &mut terminal, default_file.clone()) {
             Ok(k) => {
                 match k {
                     Some(c) => {
@@ -91,12 +108,17 @@ fn start_call(args: & mut Vec<String>) {
 }
 
 /// Starts termc in command line interactive mode.
-fn start_interactive(path: String) {
+fn start_interactive(path_str: String) {
 
+    // compute default file-path for the serialization file
+    let default_file = compute_default_filepath!(&path_str);
+
+    // create terminal handle
     let mut terminal = create_terminal_handle(TerminalMode::Interactive);
     terminal.init();
     let mut context = MathContext::new();
 
+    // REPL: take user input, evaluate it and print results / errors
     loop {
         let user_input = terminal.get_user_input();
         let user_input = user_input.trim();
@@ -106,7 +128,7 @@ fn start_interactive(path: String) {
             continue;
         }
 
-        match check_for_command(user_input, &mut context, &mut terminal, & path) {
+        match check_for_command(user_input, &mut context, &mut terminal, default_file.clone()) {
             Ok(k) => {
                 match k {
                     Some(c) => {

@@ -89,7 +89,7 @@ impl TerminalUI for TerminalHandle {
 
     /// Prints the specified error on the terminal.
     fn print_error<T: Error>(& mut self, err: T) {
-        println!("{}\n", err);
+        println!("{0}\n", err);
     }
 
     /// Prints the specified string on the terminal.

@@ -1,7 +1,6 @@
 use std::fs::File;
 use std::io::{Read, Write};
 use std::fmt;
-use std::path::Path;
 use std::error::Error;
 use serde_json;
 use regex::Regex;
@@ -62,7 +61,7 @@ impl fmt::Display for CommandError {
 }
 
 /// Checks whether the specified input string represents a command.
-pub fn check_for_command<T: TerminalUI>(s: & str, context: & mut MathContext, terminal: & mut T, default_path: &str) -> Result<Option<CommandType>, CommandError> {
+pub fn check_for_command<T: TerminalUI>(s: & str, context: & mut MathContext, terminal: & mut T, default_file: String) -> Result<Option<CommandType>, CommandError> {
 
     lazy_static!{
         static ref REGEX_EXIT : Regex = Regex::new("^exit$").unwrap();
@@ -70,10 +69,6 @@ pub fn check_for_command<T: TerminalUI>(s: & str, context: & mut MathContext, te
         static ref REGEX_LOAD : Regex = Regex::new(r"^load(\s+(?P<path>.*))?$").unwrap();
         static ref REGEX_FORMAT : Regex = Regex::new(r"^format(\s+(?P<format>.*))?$").unwrap();
     }
-
-    let default_fp = Path::new(default_path).parent().unwrap(); // remove termc executable name
-    let default_fn = Path::new("termc_context.json"); // define default file name
-    let default_file = default_fp.join(default_fn).to_str().unwrap().to_string(); // join current path and default file name
 
     if REGEX_EXIT.is_match(s) {
         Ok(Some(CommandType::Exit))
