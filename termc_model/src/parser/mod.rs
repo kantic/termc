@@ -309,7 +309,7 @@ impl<'a> Parser<'a> {
             if his_prec > my_prec {
                 let t = try!(self.tokenizer.next());
                 let mut wrap = TreeNode::new(t);
-                // "left" is the left operand of the binary operation "t", so add id
+                // "left" is the left operand of the binary operation "t", so add it as an successor
                 wrap.successors.push(Box::new(left));
                 let elem = try!(self.parse_element());
 
