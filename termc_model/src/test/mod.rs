@@ -312,6 +312,16 @@ fn tst_get_result() {
     assert!(result.result_type == NumberType::Real);
     assert!(result.value.re - 5.0 < TEST_BOUND);
 
+    // test binary with higher precedence following a binary operation with lower precedence
+    // with operands that have unary opeartions
+    let result = get_result("1 + -2 * -1", & mut context);
+    assert!(result.is_ok());
+    let result = result.ok().unwrap();
+    assert!(result.is_some());
+    let result = result.unwrap();
+    assert!(result.result_type == NumberType::Real);
+    assert!(result.value.re - 3.0 < TEST_BOUND);
+
     // test assignment of constant
     let result = get_result("c = e + pi", & mut context);
     assert!(result.is_ok());

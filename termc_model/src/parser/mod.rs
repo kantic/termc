@@ -321,7 +321,13 @@ impl<'a> Parser<'a> {
 
                         // the unary expression is the right operand of the binary operation "t"
                         let unary = try!(self.recursive_parse_unary(elem));
-                        wrap.successors.push(Box::new(unary));
+                        if !self.tokenizer.eof() {
+                            let right = try!(self.recursive_parse_binary(unary, his_prec));
+                            wrap.successors.push(Box::new(right));
+                        }
+                        else {
+                            wrap.successors.push(Box::new(unary));
+                        }
                     }
                     else {
                         return Err(ParseError::from(ExpectedErrorTemplate::new(self.tokenizer.get_input(), "unary operation",
