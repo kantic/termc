@@ -75,7 +75,7 @@ fn tst_get_result() {
     let result = result.ok().unwrap();
     assert!(result.is_some());
     let result = result.unwrap();
-    assert!(result.result_type == NumberType::Complex);
+    assert!(result.result_type == NumberType::Real);
     assert!(result.value.re + 0.5 < TEST_BOUND);
     assert!(result.value.im - 0.0 < TEST_BOUND);
 
@@ -121,7 +121,7 @@ fn tst_get_result() {
     let result = result.ok().unwrap();
     assert!(result.is_some());
     let result = result.unwrap();
-    assert!(result.result_type == NumberType::Complex);
+    assert!(result.result_type == NumberType::Real);
     assert!(result.value.re + 0.375 < TEST_BOUND);
     assert!(result.value.im - 0.0 < TEST_BOUND);
 
@@ -167,7 +167,7 @@ fn tst_get_result() {
     let result = result.ok().unwrap();
     assert!(result.is_some());
     let result = result.unwrap();
-    assert!(result.result_type == NumberType::Complex);
+    assert!(result.result_type == NumberType::Real);
     assert!(result.value.re + 0.875 < TEST_BOUND);
     assert!(result.value.im - 0.0 < TEST_BOUND);
 
@@ -237,6 +237,22 @@ fn tst_get_result() {
     let result = result.unwrap();
     assert!(result.result_type == NumberType::Real);
     assert!(result.value.re + f64::consts::E < TEST_BOUND);
+
+    // test unary expression with user constant
+    let result = get_result("x = -15", & mut context);
+    assert!(result.is_ok());
+    let result = result.ok().unwrap();
+    assert!(result.is_none());
+
+    let result = get_result("--+-x", & mut context);
+    assert!(result.is_ok());
+    let result = result.ok().unwrap();
+    assert!(result.is_some());
+    let result = result.unwrap();
+    assert!(result.result_type == NumberType::Real);
+    assert!(result.value.re - 15.0_f64 < TEST_BOUND);
+     // reset context
+    let mut context = MathContext::new();
 
     // test nested unary expressions
     let result = get_result("---+-2.44", & mut context);
@@ -630,7 +646,7 @@ fn tst_get_result() {
     let result = result.ok().unwrap();
     assert!(result.is_some());
     let result = result.unwrap();
-    assert!(result.result_type == NumberType::Complex);
+    assert!(result.result_type == NumberType::Real);
     assert!(result.value.im - 0.0 < TEST_BOUND);
 
     // test re function
@@ -782,6 +798,16 @@ fn tst_get_result() {
     assert!(result.result_type == NumberType::Complex);
     assert!(result.value.re - 9.614621876 < TEST_BOUND);
     assert!(result.value.im - 0.5 < TEST_BOUND);
+
+    // test result of an expression with complex numbers to be real if the result of the imaginary part is zero
+    let result = get_result("5+3i -7i +78 +4i", & mut context);
+    assert!(result.is_ok());
+    let result = result.ok().unwrap();
+    assert!(result.is_some());
+    let result = result.unwrap();
+    assert!(result.result_type == NumberType::Real);
+    assert!(result.value.re - 83.0_f64 < TEST_BOUND);
+    assert!(result.value.im - 0.0 < TEST_BOUND);
 
     // Error message tests
 

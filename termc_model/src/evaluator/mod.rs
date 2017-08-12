@@ -86,9 +86,16 @@ pub enum EvaluationResult {
 
 impl<'a> From<MathResult> for EvaluationResult {
 
-    /// Concerts a MathResult into an EvaluationResult.
+    /// Converts a MathResult into an EvaluationResult.
     fn from(res: MathResult) -> EvaluationResult {
-        EvaluationResult::Numerical(res)
+
+        // Check if a complex MathResult object can be reduced to a real MathResult object
+        if res.result_type == NumberType::Complex && res.value.im == 0.0_f64 {
+            EvaluationResult::Numerical(MathResult::from(res.value.re))
+        }
+        else {   
+            EvaluationResult::Numerical(res)
+        }
     }
 }
 

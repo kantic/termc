@@ -384,7 +384,7 @@ impl<'a> Parser<'a> {
             }
         }
         else if t_type == TokenType::Number(NumberType::Real) || t_type == TokenType::Number(NumberType::Complex) ||
-            t_type == TokenType::Constant || t_type == TokenType::Function || t.successors.len() > 0 {
+            t_type == TokenType::Constant || t_type == TokenType::Function || t_type == TokenType::UserConstant || t.successors.len() > 0 {
 
             m_left.successors.push(Box::new(t));
             Ok(m_left)

@@ -239,21 +239,36 @@ impl From<Complex<f64>> for MathResult {
 impl<'a> From<&'a Complex<f64>> for MathResult {
     /// Converts a complex number reference into a MathResult.
     fn from(cmplx: &'a Complex<f64>) -> Self {
-        MathResult {result_type: NumberType::Complex, value: Complex::from(cmplx.clone())}
+        if cmplx.im == 0.0_f64 {
+            MathResult {result_type: NumberType::Real, value: Complex::from(cmplx.re)}
+        }
+        else {
+            MathResult {result_type: NumberType::Complex, value: Complex::from(cmplx.clone())}
+        }
     }
 }
 
 impl From<(f64, f64)> for MathResult {
     /// Converts a tuple of two floats into a MathResult (complex type).
     fn from(tpl: (f64, f64)) -> Self {
-        MathResult {result_type: NumberType::Complex, value: Complex::new(tpl.0, tpl.1)}
+        if tpl.1 == 0.0_f64 {
+            MathResult {result_type: NumberType::Real, value: Complex::from(tpl.0)}
+        }
+        else {
+            MathResult {result_type: NumberType::Complex, value: Complex::new(tpl.0, tpl.1)}
+        }
     }
 }
 
 impl<'a> From<&'a (f64, f64)> for MathResult {
     /// Converts a tuple reference of two floats into a MathResult (complex type).
     fn from(tpl: &'a (f64, f64)) -> Self {
-        MathResult {result_type: NumberType::Complex, value: Complex::new(tpl.0, tpl.1)}
+        if tpl.1 == 0.0_f64 {
+            MathResult {result_type: NumberType::Real, value: Complex::from(tpl.0)}
+        }
+        else {
+            MathResult {result_type: NumberType::Complex, value: Complex::new(tpl.0, tpl.1)}
+        }
     }
 }
 
