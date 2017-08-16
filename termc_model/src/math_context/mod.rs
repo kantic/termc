@@ -1346,4 +1346,68 @@ impl<'a> MathContext {
     pub fn get_user_function_input(& self, repr: & str) -> Option<String> {
         self.user_function_inputs.get(repr).cloned()
     }
+
+    /// Gets all user defined constants.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// extern crate num;
+    /// extern crate termc_model;
+    ///
+    /// use num::complex::Complex;
+    /// use termc_model::math_context::MathContext;
+    /// use termc_model::math_result::MathResult;
+    /// use termc_model::token::NumberType;
+    ///
+    /// fn main() {
+    ///     let mut context = MathContext::new();
+    ///     context.add_user_constant("c", MathResult::new(NumberType::Real, Complex::new(4.1, 0.0)));
+    ///
+    ///     let constants = context.get_user_constants();
+    ///     assert!(constants.len() == 1);
+    ///     assert!(constants.get("c").unwrap().value.re == 4.1);
+    /// }
+    /// ```
+    pub fn get_user_constants(&self) -> HashMap<String, MathResult> {
+        self.user_constants.clone()
+    }
+
+    /// Gets all user defined function definitions.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// extern crate num;
+    /// extern crate termc_model;
+    ///
+    /// use num::complex::Complex;
+    /// use termc_model::math_context::MathContext;
+    /// use termc_model::math_result::MathResult;
+    /// use termc_model::token::{Token, TokenType, SymbolicTokenType, NumberType};
+    /// use termc_model::tree::TreeNode;
+    ///
+    /// fn main() {
+    ///     let mut context = MathContext::new();
+    ///
+    ///     let mut input = "f(x) = x";
+    ///     let mut f = Token::new(TokenType::Symbol(SymbolicTokenType::UnknownFunction), String::from("f"), 0);
+    ///     let mut f_node: TreeNode<Token> = TreeNode::new(f);
+    ///     let mut x = Token::new(TokenType::Symbol(SymbolicTokenType::UnknownConstant), String::from("x"), 2);
+    ///     let mut x_node: TreeNode<Token> = TreeNode::new(x);
+    ///     f_node.successors.push(Box::new(x_node));
+    ///     context.add_user_function("f", f_node, vec![String::from("x")], input);
+    ///
+    ///     let user_functions = context.get_user_function_definitions();
+    ///     assert!(user_functions.len() == 1);
+    ///     assert!(user_functions[0] == "f(x) = x");
+    /// }
+    /// ```
+    pub fn get_user_function_definitions(&self) -> Vec<String> {
+        let mut result = Vec::new();
+        for (_, input) in &self.user_function_inputs {
+            result.push(input.clone())
+        }
+        result
+    }
 }

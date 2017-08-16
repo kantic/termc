@@ -12,13 +12,8 @@ use std::path::Path;
 use termc_model::get_result;
 use termc_model::math_context::MathContext;
 use termc_model::math_result::MathResult;
-use termc_ui::{create_terminal_handle, TerminalUI, TerminalMode};
+use termc_ui::{TerminalUI, TerminalMode};
 use command_library::{CommandType, check_for_command};
-
-#[cfg(unix)]
-use termc_ui::unix::TerminalHandle;
-#[cfg(windows)]
-use termc_ui::windows::TerminalHandle;
 
 /// The main entry point.
 pub fn main() {
@@ -42,14 +37,10 @@ fn get_arguments() -> Vec<String> {
     args_it.collect()
 }
 
-macro_rules! compute_default_filepath {
-    ($path_str:expr) => {{
-    // path: path of this executable (first argument given)
-
-        let default_fd = Path::new($path_str).parent().unwrap(); // remove termc executable name
-        let default_fn = Path::new("termc_context.json"); // define default file name
-        default_fd.join(default_fn).to_str().unwrap().to_string() // join current path and default file name
-    }}
+fn build_default_ser_path(exe_path: &str) -> String {
+    let default_fd = Path::new(exe_path).parent().unwrap(); // remove termc executable name
+    let default_fn = Path::new("termc_context.json"); // define default file name
+    default_fd.join(default_fn).to_str().unwrap().to_string() // join current path and default file name
 }
 
 /// Starts termc in command line call mode.
@@ -59,11 +50,10 @@ fn start_call(args: & mut Vec<String>) {
     // compute default file-path for the serialization file
     let mut iter = args.iter();
     let path_str : String = iter.next().unwrap().to_string(); // get path of this executable
-    let default_file = compute_default_filepath!(&path_str);
+    let default_file = build_default_ser_path(&path_str);
 
     // create terminal handle
-    let mut terminal = create_terminal_handle(TerminalMode::Call);
-    terminal.init();
+    let mut terminal = TerminalUI::new(TerminalMode::Call);
 
     let mut results : Vec<MathResult> = Vec::new();
     let mut context = MathContext::new();
@@ -72,11 +62,11 @@ fn start_call(args: & mut Vec<String>) {
     // if an error occurs for any of the given arguments, the evaluation of all arguments will be aborted
     for (i, arg) in iter.enumerate() {
 
-        match check_for_command::<TerminalHandle>(arg, &mut context, &mut terminal, default_file.clone()) {
+        match check_for_command(arg, &mut context, &mut terminal, default_file.clone()) {
             Ok(k) => {
                 match k {
-                    Some(c) => {
-                        match c {
+                    Some(command_type) => {
+                        match command_type {
                             CommandType::Exit => break,
                             _ => ()
                         }
@@ -91,8 +81,7 @@ fn start_call(args: & mut Vec<String>) {
                                 }
                             },
                             Err(err) => {
-                                terminal.print_str(&format!("In input {0}:", i+1));
-                                terminal.print_newline();
+                                terminal.print(&format!("In input {0}:\n", i+1));
                                 terminal.print_error(err);
                                 break;
                             }
@@ -111,11 +100,11 @@ fn start_call(args: & mut Vec<String>) {
 fn start_interactive(path_str: String) {
 
     // compute default file-path for the serialization file
-    let default_file = compute_default_filepath!(&path_str);
+    let default_file = build_default_ser_path(&path_str);
 
     // create terminal handle
-    let mut terminal = create_terminal_handle(TerminalMode::Interactive);
-    terminal.init();
+    let mut terminal = TerminalUI::new(TerminalMode::Interactive);
+    // terminal.init();
     let mut context = MathContext::new();
 
     // REPL: take user input, evaluate it and print results / errors
@@ -131,10 +120,10 @@ fn start_interactive(path_str: String) {
         match check_for_command(user_input, &mut context, &mut terminal, default_file.clone()) {
             Ok(k) => {
                 match k {
-                    Some(c) => {
-                        match c {
+                    Some(command_type) => {
+                        match command_type {
                             CommandType::Exit => break,
-                            _ => terminal.print_newline()
+                            _ => terminal.print_cmd_ack()
                         }
                     },
 
@@ -143,7 +132,7 @@ fn start_interactive(path_str: String) {
                             Ok(result) => {
                                 match result {
                                     Some(y) => terminal.print_result(Some(&y)),
-                                    None => terminal.print_newline()
+                                    None => ()
                                 }
                             },
                             Err(err) => {
@@ -157,5 +146,8 @@ fn start_interactive(path_str: String) {
         }
     }
 
-    terminal.end();
+    match terminal.save_history_file() {
+        Ok(_) => (),
+        Err(e) => terminal.print_error(e)
+    }
 }

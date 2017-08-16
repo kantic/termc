@@ -1,4 +1,5 @@
 use std::fmt;
+use std::mem::transmute;
 use num::complex::Complex;
 use token::NumberType;
 use f64formatter::F64Formatter;
@@ -165,10 +166,13 @@ macro_rules! fmt_impl {
     // obj: the MathResult instance to be formatted
     // fmt_type: the formatting type (e.g. 'b' (binary), 'o' (octal) or 'x' (hexadecimal))
 
+        if $obj.value.is_nan() || $obj.value.is_infinite() {
+            // prevent output like "0xNaN" for hex format, which should be just "NaN"
+            return write!($f, "{0}", $obj.value)
+        }
+
         match $obj.result_type {
-            NumberType::Real => {
-                write!($f, concat!("{0:#" ,$fmt_type, "}"), F64Formatter($obj.value.re))
-            },
+            NumberType::Real => write!($f, concat!("{0:#" ,$fmt_type, "}"), F64Formatter($obj.value.re)),
             NumberType::Complex => {
                 let tmp : Complex<F64Formatter> = Complex::new(F64Formatter($obj.value.re), F64Formatter($obj.value.im));
                 write!($f, concat!("{0:#", $fmt_type, "}"), tmp)
@@ -225,6 +229,45 @@ impl fmt::UpperExp for MathResult {
         match self.result_type {
             NumberType::Real => write!(f, "{0:#E}", self.value.re),
             NumberType::Complex => write!(f, "{0:#E}", self.value)
+        }
+    }
+}
+
+/// The trait to format a number in IEEE754 representation.
+pub trait FormatIEEE754 {
+    /// Formats a number in IEEE754 representation.
+    /// Example: decimal 0.5_f32 is "0b00111111000000000000000000000000"
+    fn ieee754_fmt(&self) -> String;
+}
+
+impl FormatIEEE754 for MathResult {
+    /// Implements the formatted IEEE754 output for MathResult.
+    /// NOTE: This only works on machines which use the IEEE754 format internally for floating point number representation.
+    fn ieee754_fmt(&self) -> String {
+        match self.result_type {
+
+            NumberType::Real => {
+                if self.value.re.is_nan() || self.value.re.is_infinite() {
+                    // prevent output like "0xNaN" for hex format, which should be just "NaN"
+                    format!("{0}", self.value.re)
+                }
+                else {
+                    let pattern : u64 = unsafe {transmute::<f64, u64>(self.value.re)};
+                    format!("{0:#b}", pattern)
+                }
+            },
+            NumberType::Complex => {
+                if self.value.is_nan() || self.value.is_infinite() {
+                    // prevent output like "0xNaN+0xNaNi" for hex format, which should be just "NaN+NaNi"
+                    format!("{0}", self.value)
+                }
+                else {
+                    let re_bin : u64 = unsafe {transmute::<f64, u64>(self.value.re)};
+                    let im_bin : u64 = unsafe {transmute::<f64, u64>(self.value.im)};
+                    let tmp : Complex<u64> = Complex::new(re_bin, im_bin);
+                    format!("{0:#b}", tmp)
+                }
+            }
         }
     }
 }

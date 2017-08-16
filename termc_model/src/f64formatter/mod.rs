@@ -3,6 +3,7 @@ use num::traits::{Zero, One, Num, ParseFloatError};
 use std::ops::{Add, Div, Mul, Sub, Rem};
 use std::collections::HashMap;
 
+/// Formatter for the f64 type that implements the formatting traits for several different number formats.
 #[derive(PartialEq, Copy, Clone, Debug, Default, PartialOrd)]
 pub struct F64Formatter(pub f64);
 
@@ -130,6 +131,10 @@ impl F64Formatter {
 
 macro_rules! format_pre_dp {
     ($f:ident, $val:ident, $typ:tt) => {{
+        // f: the std::fmt instance
+        // val: the value before the decimal point
+        // typ: the formmating type
+
         let abs = $val.abs();
         let pre_dp : u64 = abs as u64;
         if $f.alternate() {
@@ -143,6 +148,10 @@ macro_rules! format_pre_dp {
 
 macro_rules! format_post_dp {
     ($val:ident, $base:tt, $lookup:ident, $prec:tt) => {{
+        // val: the value after the decimal point
+        // base: the base of the number system to format
+        // prec: the precision (number of decimal places)
+
         let abs = $val.abs();
         let mut post_dp : f64 = abs - ((abs as u64) as f64);
         let mut repr = String::new();
@@ -165,6 +174,16 @@ macro_rules! format_post_dp {
 
 macro_rules! write_formatter {
     ($f:ident, $formatter:ident, $fmt_type:tt, $base:tt, $lookup:ident) => {{
+        // f: the std::fmt instance
+        // formatter: the F64Formatter instance
+        // fmt_type: the formatring type
+        // lookup: the digit lookup method
+
+        // NaN and Infinity are handled without concerning the formatting type
+        if $formatter.0.is_nan() || $formatter.0.is_infinite() {
+            return write!($f, "{0}", $formatter.0);
+        }
+
         let abs = $formatter.0.abs();
         let pre_repr = format_pre_dp!($f, abs, $fmt_type);
         let post_repr = if let Some(prec) = $f.precision() {
@@ -173,7 +192,7 @@ macro_rules! write_formatter {
         else {
             format_post_dp!(abs, $base, $lookup, 10)
         };
-        //if post_repr != "0" {
+
         if post_repr != "" {
             write!($f, "{0}.{1}", pre_repr, post_repr)
         }
