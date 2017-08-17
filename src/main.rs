@@ -113,7 +113,6 @@ fn start_interactive(path_str: String) {
         let user_input = user_input.trim();
 
         if user_input.len() == 0 {
-            terminal.print_result::<MathResult>(None);
             continue;
         }
 
@@ -131,7 +130,7 @@ fn start_interactive(path_str: String) {
                         match get_result(& user_input, & mut context) {
                             Ok(result) => {
                                 match result {
-                                    Some(y) => terminal.print_result(Some(&y)),
+                                    Some(y) => terminal.print_result(&y),
                                     None => ()
                                 }
                             },

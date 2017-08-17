@@ -111,7 +111,7 @@ pub fn check_for_command(s: & str, context: & mut MathContext, terminal: & mut T
         if form.is_some() {
             let ft = FormatType::from(form.unwrap().as_str());
             match ft {
-                FormatType::Unknown => Err(CommandError::FormatError(form.unwrap().as_str().to_string())),
+                FormatType::Undefined => Err(CommandError::FormatError(form.unwrap().as_str().to_string())),
                 _ => {
                     switch_format(terminal, ft.clone());
                     Ok(Some(CommandType::Format(ft)))

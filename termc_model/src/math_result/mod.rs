@@ -1,11 +1,12 @@
 use std::fmt;
 use std::mem::transmute;
-use num::complex::Complex;
-use token::NumberType;
 use f64formatter::F64Formatter;
 use serde::{Serialize, Serializer, Deserialize, Deserializer};
 use serde::ser::{SerializeStruct};
 use serde::de;
+
+pub use token::NumberType;
+pub use num::complex::Complex;
 
 /// Defines the result of a mathematical expression.
 /// The result can be a real or a complex number and thus, be only numerical.
