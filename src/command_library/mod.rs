@@ -84,10 +84,10 @@ pub fn check_for_command(s: & str, context: & mut MathContext, terminal: & mut T
     }
 
     if REGEX_EXIT.is_match(s) {
-        Ok(Some(CommandType::Exit))
+        Ok(Some(CommandType::Exit)) // signal exit
     }
     else if REGEX_INFO.is_match(s) {
-        print_info(context, terminal);
+        print_info(context, terminal); // print information about user defined symbols
         Ok(Some(CommandType::Info))
     }
     else if let Some(cap) = REGEX_LOAD.captures(s) {
@@ -109,10 +109,12 @@ pub fn check_for_command(s: & str, context: & mut MathContext, terminal: & mut T
     else if let Some(cap) = REGEX_FORMAT.captures(s) {
         let form = cap.name("format");
         if form.is_some() {
+            // find out which format is specified in the command
             let ft = FormatType::from(form.unwrap().as_str());
             match ft {
                 FormatType::Undefined => Err(CommandError::FormatError(form.unwrap().as_str().to_string())),
                 _ => {
+                    // set the specified format
                     switch_format(terminal, ft.clone());
                     Ok(Some(CommandType::Format(ft)))
                 }

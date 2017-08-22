@@ -10,9 +10,9 @@ extern crate num;
 pub mod math_context;
 pub mod math_result;
 pub mod token;
-pub mod result_error;
 pub mod tree;
 
+mod result_error;
 mod parser;
 mod evaluator;
 mod error_templates;
@@ -44,6 +44,21 @@ fn evaluate(tree: & TreeNode<Token>, context: & mut MathContext, s: & str) -> Re
 }
 
 /// Computes the result of the specified input string containing an mathematical expression.
+///
+/// # Examples
+///
+/// ```
+/// use termc_model::math_context::MathContext;
+/// use termc_model::math_result::MathResult;
+/// use termc_model::get_result;
+///
+/// fn main() {
+///     let mut context = MathContext::new();
+///     let input_str = "5+7";
+///     let result = get_result(input_str, &mut context);
+///     assert!(result.ok().unwrap().unwrap() == MathResult::from((12.0, 0.0)));
+/// }
+/// ```
 pub fn get_result(s: & str, context: & mut MathContext) -> Result<Option<MathResult>, ResultError> {
     match parse(s, context) {
         Ok(ref x) => Ok(try!(evaluate(x, context, s))),

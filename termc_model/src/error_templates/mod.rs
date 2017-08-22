@@ -35,6 +35,7 @@ impl fmt::Display for ExpectedErrorTemplate {
     }
 }
 
+/// Creates a string that sets a marker at the specified position. The result is the input string with the marker set.
 pub fn create_location_string<S>(input: S, pos: u32) -> String where S: Into<String> {
     let mut res = input.into();
     res.push('\n');

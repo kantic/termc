@@ -6,7 +6,7 @@ use self::serde::ser::Serialize;
 
 use std::fmt;
 
-/// Defines a binary tree node structure
+/// Defines a tree node structure
 #[derive(Clone, Serialize, Deserialize)]
 pub struct TreeNode<T: Clone + Serialize> {
     /// the content of the tree node

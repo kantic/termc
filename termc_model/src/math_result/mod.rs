@@ -10,7 +10,7 @@ pub use num::complex::Complex;
 
 /// Defines the result of a mathematical expression.
 /// The result can be a real or a complex number and thus, be only numerical.
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub struct MathResult {
     pub result_type: NumberType,
     pub value: Complex<f64>
@@ -22,7 +22,7 @@ impl Serialize for MathResult {
     fn serialize<S>(&self, serializer: S) -> Result<(S::Ok), S::Error> where
         S: Serializer
     {
-        let mut struc = serializer.serialize_struct("MathResult", 3)?;
+        let mut struc = try!(serializer.serialize_struct("MathResult", 3));
         struc.serialize_field("result_type", &self.result_type)?;
         struc.serialize_field("re", &self.value.re)?;
         struc.serialize_field("im", &self.value.im)?;
@@ -131,6 +131,23 @@ impl Deserialize for MathResult
 
 impl MathResult {
     /// Creates a new instance of the MathResult struct.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// extern crate num;
+    /// extern crate termc_model;
+    ///
+    /// use num::complex::Complex;
+    /// use termc_model::math_result::{MathResult, NumberType};
+    ///
+    /// fn main() {
+    ///
+    ///     let result = MathResult::new(NumberType::Real, Complex::new(4.1, 0.0));
+    ///     assert!(result.result_type == NumberType::Real);
+    ///     assert!(result.value.re == 4.1_f64);
+    /// }
+    /// ```
     pub fn new(t: NumberType, val: Complex<f64>) -> MathResult {
         MathResult {result_type: t, value: val}
     }

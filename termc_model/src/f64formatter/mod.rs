@@ -65,6 +65,8 @@ impl Rem for F64Formatter {
 }
 
 impl F64Formatter {
+
+    // Returns the character of the specified binary digit value.
     fn lookup_binary(val: f64) -> char {
         lazy_static!{
             static ref BINARY_MAP : HashMap<u64, char> = {
@@ -78,6 +80,7 @@ impl F64Formatter {
         BINARY_MAP.get(&pre).unwrap().clone()
     }
 
+    // Returns the character of the specified octal digit value.
     fn lookup_octal(val: f64) -> char {
         lazy_static!{
             static ref OCTAL_MAP : HashMap<u64, char> = {
@@ -97,6 +100,7 @@ impl F64Formatter {
         OCTAL_MAP.get(&pre).unwrap().clone()
     }
 
+    // Returns the character of the specified hexadecimal digit value (in lowercase).
     fn lookup_lower_hex(val: f64) -> char {
         lazy_static!{
             static ref HEX_MAP : HashMap<u64, char> = {
@@ -124,6 +128,7 @@ impl F64Formatter {
         HEX_MAP.get(&pre).unwrap().clone()
     }
 
+    // Returns the character of the specified hexadecimal digit value (in uppercase).
     fn lookup_upper_hex(val: f64) -> char {
         F64Formatter::lookup_lower_hex(val).to_uppercase().to_string().pop().unwrap().clone()
     }

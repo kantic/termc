@@ -352,9 +352,12 @@ impl<'a> Evaluator<'a> {
             },
 
             TokenType::Function | TokenType::UserFunction => {
+
+                // get type of function (cos, sin, exp,..., or a user defined function)
                 let f_type = self.context.get_function_type(subtree.content.get_value().as_ref());
                 let f_type = f_type.unwrap();
 
+                // get arguments of the function and check if the number of provided arguments matches the number of needed arguments
                 let n_successors = subtree.successors.len() as u32;
                 let n_args = self.context.get_function_arg_num(subtree.content.get_value()).unwrap();
                 if n_successors != n_args {
@@ -363,6 +366,7 @@ impl<'a> Evaluator<'a> {
                                                                                 subtree.content.get_end_pos())));
                 }
 
+                // evaluate the provided arguments
                 let mut args : Vec<MathResult> = Vec::new();
                 for s in subtree.successors.iter() {
                     let x = try!(self.recursive_evaluate(s.as_ref(), input));
@@ -370,6 +374,7 @@ impl<'a> Evaluator<'a> {
                     args.push(x_num);
                 }
 
+                // call the correct function (regarding the function type) with the evaluated arguments
                 match f_type {
                     FunctionType::Cos => Ok(EvaluationResult::from(MathContext::function_cos(& args[0]))),
                     FunctionType::Sin => Ok(EvaluationResult::from(MathContext::function_sin(& args[0]))),
@@ -387,8 +392,7 @@ impl<'a> Evaluator<'a> {
                     FunctionType::Sqrt => Ok(EvaluationResult::from(MathContext::function_sqrt(& args[0]))),
                     FunctionType::Ln => Ok(EvaluationResult::from(MathContext::function_ln(& args[0]))),
                     FunctionType::Pow => Ok(EvaluationResult::from(MathContext::operation_pow(& args[0], & args[1]))),
-                    FunctionType::Root => Ok(EvaluationResult::from(MathContext::operation_pow(& args[0], & MathResult::new(
-                        args[1].result_type.clone(), 1.0 / args[1].value)))),
+                    FunctionType::Root => Ok(EvaluationResult::from(MathContext::operation_root(& args[0], & args[1]))),
                     FunctionType::ArcCos => Ok(EvaluationResult::from(MathContext::function_arccos(& args[0]))),
                     FunctionType::ArcSin => Ok(EvaluationResult::from(MathContext::function_arcsin(& args[0]))),
                     FunctionType::ArcTan => Ok(EvaluationResult::from(MathContext::function_arctan(& args[0]))),

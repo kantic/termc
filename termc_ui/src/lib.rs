@@ -253,11 +253,10 @@ impl TerminalUI {
     ///
     /// use termc_ui::{TerminalUI, TerminalMode};
     /// use termc_model::math_result::MathResult;
-    /// use termc_model::token::NumberType;
     /// use num::complex::Complex;
     ///
     /// fn main() {
-    ///     let result = MathResult::new(NumberType::Complex, Complex::new(4.1, 5.73));
+    ///     let result = MathResult::from((4.1, 5.73));
     ///
     ///     let tui = TerminalUI::new(TerminalMode::Call);
     ///     tui.print_result(&result);
@@ -281,11 +280,10 @@ impl TerminalUI {
     ///
     /// use termc_ui::{TerminalUI, TerminalMode};
     /// use termc_model::math_result::MathResult;
-    /// use termc_model::token::NumberType;
     /// use num::complex::Complex;
     ///
     /// fn main() {
-    ///     let results = vec![MathResult::new(NumberType::Complex, Complex::new(4.1, 5.73)), MathResult::new(NumberType::Real, Complex::new(4.1, 0.0))];
+    ///     let results = vec![MathResult::from((4.1, 5.73)), MathResult::from((4.1, 0.0))];
     ///
     ///     let tui = TerminalUI::new(TerminalMode::Call);
     ///     tui.print_results(&results);
@@ -383,11 +381,10 @@ impl TerminalUI {
     ///
     /// use termc_ui::{TerminalUI, TerminalMode, FormatType};
     /// use termc_model::math_result::MathResult;
-    /// use termc_model::token::NumberType;
     /// use num::complex::Complex;
     ///
     /// fn main() {
-    ///     let result = MathResult::new(NumberType::Complex, Complex::new(10.0, 11.0));
+    ///     let result = MathResult::from((10.0, 11.0));
     ///
     ///     let mut tui = TerminalUI::new(TerminalMode::Call);
     ///     tui.set_format_type(FormatType::Hex);

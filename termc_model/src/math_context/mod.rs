@@ -361,7 +361,7 @@ impl<'a> MathContext {
     ///     let is_built_in_const = context.is_user_constant("pi");
     ///     assert!(is_built_in_const == false);
     ///
-    ///     context.add_user_constant("custom_constr", MathResult::new(NumberType::Real, Complex::new(4.1, 0.0)));
+    ///     context.add_user_constant("custom_constr", MathResult::from((4.1, 0.0)));
     ///
     ///     let is_built_in_const = context.is_user_constant("custom_constr");
     ///     assert!(is_built_in_const == true);
@@ -658,6 +658,22 @@ impl<'a> MathContext {
                 MathResult::new(t, (lhs.value.ln() * rhs.value).exp())
             }
         }
+    }
+
+    /// Implements the mathematical root operation.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use termc_model::math_context::MathContext;
+    /// use termc_model::math_result::MathResult;
+    ///
+    /// let arg = MathResult::from(8.0_f64);
+    /// let root = MathResult::from(3.0_f64);
+    /// assert!(MathContext::operation_root(& arg, & root).value.re - 2.0_f64 < 10e-10_f64);
+    /// ```
+    pub fn operation_root(arg: & MathResult, root: & MathResult) -> MathResult {
+        MathContext::operation_pow(arg, &MathResult::new(root.result_type.clone(), 1.0 / root.value))
     }
 
     /// Implements the mathematical cosine function.
@@ -985,7 +1001,7 @@ impl<'a> MathContext {
         MathResult::new(arg.result_type.clone(), arg.value.exp())
     }
 
-    /// Implements the mathematical inverse hyperbolic sine function.
+    /// Implements the mathematical logarithmus naturalis function.
     ///
     /// # Examples
     ///
@@ -1013,7 +1029,7 @@ impl<'a> MathContext {
         MathResult::new(t, arg.value.ln())
     }
 
-    /// Implements the mathematical inverse hyperbolic sine function.
+    /// Implements the mathematical square root function.
     ///
     /// # Examples
     ///
@@ -1101,7 +1117,7 @@ impl<'a> MathContext {
     ///
     /// fn main() {
     ///     let mut context = MathContext::new();
-    ///     context.add_user_constant("c", MathResult::new(NumberType::Real, Complex::new(4.1, 0.0)));
+    ///     context.add_user_constant("c", MathResult::from((4.1, 0.0)));
     ///
     ///     let is_built_in_const = context.is_user_constant("c");
     ///     assert!(is_built_in_const == true);
@@ -1128,7 +1144,7 @@ impl<'a> MathContext {
     ///
     /// fn main() {
     ///     let mut context = MathContext::new();
-    ///     context.add_user_constant("c", MathResult::new(NumberType::Real, Complex::new(4.1, 0.0)));
+    ///     context.add_user_constant("c", MathResult::from((4.1, 0.0)));
     ///
     ///     let is_built_in_const = context.is_user_constant("c");
     ///     assert!(is_built_in_const == true);
@@ -1355,18 +1371,17 @@ impl<'a> MathContext {
     /// extern crate num;
     /// extern crate termc_model;
     ///
-    /// use num::complex::Complex;
     /// use termc_model::math_context::MathContext;
     /// use termc_model::math_result::MathResult;
     /// use termc_model::token::NumberType;
     ///
     /// fn main() {
     ///     let mut context = MathContext::new();
-    ///     context.add_user_constant("c", MathResult::new(NumberType::Real, Complex::new(4.1, 0.0)));
+    ///     context.add_user_constant("c", MathResult::from((4.1, 0.0)));
     ///
     ///     let constants = context.get_user_constants();
     ///     assert!(constants.len() == 1);
-    ///     assert!(constants.get("c").unwrap().value.re == 4.1);
+    ///     assert!(constants.get("c").unwrap() == &MathResult::from((4.1, 0.0)));
     /// }
     /// ```
     pub fn get_user_constants(&self) -> HashMap<String, MathResult> {

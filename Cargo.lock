@@ -1,12 +1,12 @@
 [root]
 name = "termc"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "lazy_static 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "regex 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_json 0.9.10 (registry+https://github.com/rust-lang/crates.io-index)",
- "termc_model 0.1.0",
- "termc_ui 0.1.0",
+ "termc_model 1.0.0",
+ "termc_ui 1.0.0",
 ]
 
 [[package]]
@@ -322,7 +322,7 @@ dependencies = [
 
 [[package]]
 name = "termc_model"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "lazy_static 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "num 0.1.40 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -333,13 +333,13 @@ dependencies = [
 
 [[package]]
 name = "termc_ui"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "app_dirs 1.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "colored 1.5.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "num 0.1.40 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustyline 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "termc_model 0.1.0",
+ "termc_model 1.0.0",
 ]
 
 [[package]]
