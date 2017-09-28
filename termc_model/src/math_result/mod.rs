@@ -165,19 +165,6 @@ impl fmt::Display for MathResult {
     }
 }
 
-macro_rules! write_result {
-    ($f:ident, $t:expr, $val:expr) => {{
-    // f: fmt::Formatter
-    // t: format type (e.g "b" for binary)
-    // val: MathResult instance to print
-        let tmp : Complex<i64> = Complex::new($val.value.re as i64, $val.value.im as i64);
-        match $val.result_type {
-            NumberType::Real => write!($f, concat!("{0:#", $t, "}"), tmp.re),
-            NumberType::Complex => write!($f, concat!("{0:#", $t, "}"), tmp)
-        }
-    }}
-}
-
 macro_rules! fmt_impl {
     ($f:ident, $obj:ident, $fmt_type:tt) => {{
     // f: the fmt::Formatter instance

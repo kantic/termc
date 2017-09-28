@@ -130,7 +130,7 @@ impl F64Formatter {
 
     // Returns the character of the specified hexadecimal digit value (in uppercase).
     fn lookup_upper_hex(val: f64) -> char {
-        F64Formatter::lookup_lower_hex(val).to_uppercase().to_string().pop().unwrap().clone()
+        F64Formatter::lookup_lower_hex(val).to_uppercase().collect::<String>().to_string().pop().unwrap().clone()
     }
 }
 
