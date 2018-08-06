@@ -135,7 +135,7 @@ trait RadixParse {
     type Output;
     /// Parses the specified string. If the parsing-process succeeds, a value of type Output is returned.
     /// Otherwise, an EvaluationError is returned which marks the specified position end_pos.
-    fn parse_float(s: String, end_pos: usize) -> Result<Self::Output, EvaluationError>;
+    fn parse_float(s: String, input: & str, end_pos: usize) -> Result<Self::Output, EvaluationError>;
 }
 
 macro_rules! parse_radix {
@@ -198,7 +198,7 @@ macro_rules! parse_radix {
 impl RadixParse for f64 {
     type Output = Self;
     /// Implements the RadixParse trait for the f64 type.
-    fn parse_float(s: String, end_pos: usize) -> Result<Self::Output, EvaluationError> {
+    fn parse_float(s: String, input: & str , end_pos: usize) -> Result<Self::Output, EvaluationError> {
         if s.starts_with("0x") {
             parse_radix!(s, 16_u32, end_pos)
         }
@@ -211,7 +211,7 @@ impl RadixParse for f64 {
         else {
             match f64::from_str(&s) {
                 Ok(f) => Ok(f),
-                Err(_) => Err(EvaluationError::from(ExpectedErrorTemplate::new(s, "literal number", Some("Invalid literal symbol(s)".to_string()),
+                Err(_) => Err(EvaluationError::from(ExpectedErrorTemplate::new(input, "literal number", Some("Invalid literal symbol(s)".to_string()),
                                                                                    end_pos)))
             }
         }
@@ -266,7 +266,7 @@ impl<'a> Evaluator<'a> {
 
         match token_type {
             TokenType::Number(num_type) => {
-                let x = f64::parse_float(subtree.content.get_value().to_string(), subtree.content.get_end_pos())?;
+                let x = f64::parse_float(subtree.content.get_value().to_string(), input, subtree.content.get_end_pos())?;
                 match num_type {
                             NumberType::Real => Ok(EvaluationResult::from(x)),
                             NumberType::Complex => Ok(EvaluationResult::from(x * self.context.get_constant_value("i").unwrap().value))
