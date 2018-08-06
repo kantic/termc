@@ -5,7 +5,6 @@ use std::error::Error;
 use error_templates::ExpectedErrorTemplate;
 use token::{Token, TokenType, SymbolicTokenType, NumberType};
 use parser::tokenizer::{Tokenizer, TokenError};
-use parser::tokenizer::input_stream::StreamEndError;
 use math_context::MathContext;
 use tree::TreeNode;
 
@@ -13,11 +12,13 @@ use tree::TreeNode;
 #[derive(Clone, Debug)]
 pub enum ParseError {
     /// Error if the current token does not match the expected token.
-    /// Arguments: Expected symbol, mark in the input string
+    /// Arguments: Expected symbol, marked in the input string
     ExpectedError(ExpectedErrorTemplate),
     /// General input error of the user input (syntax error).
     /// Arguments: TokenError that causes the InputError
-    InputError(TokenError)
+    InputError(TokenError),
+    /// Given expression is incomplete.
+    IncompleteInputError
 }
 
 impl fmt::Display for ParseError {
@@ -25,8 +26,9 @@ impl fmt::Display for ParseError {
     /// Returns the formatted error message.
     fn fmt(& self, f: & mut fmt::Formatter) -> fmt::Result {
         match *self {
-            ParseError::ExpectedError(ref tmpl) => write!(f, "{0}", tmpl),
-            ParseError::InputError(ref e) => write!(f, "{0}", e)
+            ParseError::ExpectedError(ref e) => write!(f, "{0}", e),
+            ParseError::InputError(ref e) => write!(f, "{0}", e),
+            ParseError::IncompleteInputError => write!(f, "{0}", self.description())
         }
     }
 }
@@ -35,10 +37,7 @@ impl From<TokenError> for ParseError {
 
     /// Converts a TokenError into a ParseError.
     fn from(err: TokenError) -> ParseError {
-        match err {
-            TokenError::StreamEndError(ref e) => ParseError::InputError(TokenError::StreamEndError(e.clone())),
-            TokenError::UnknownTokenError(ref s, ref l) => ParseError::InputError(TokenError::UnknownTokenError(s.clone(), l.clone()))
-        }
+        ParseError::InputError(err)
     }
 }
 
@@ -56,7 +55,8 @@ impl Error for ParseError {
     fn description(& self) -> & str {
         match *self {
             ParseError::ExpectedError(_) => "Expected a symbol.",
-            ParseError::InputError(ref err) => err.description()
+            ParseError::InputError(ref err) => err.description(),
+            ParseError::IncompleteInputError => "Expression is incomplete."
         }
     }
 
@@ -64,7 +64,8 @@ impl Error for ParseError {
     fn cause(& self) -> Option<& Error> {
         match *self {
             ParseError::ExpectedError(_) => None,
-            ParseError::InputError(ref err) => Some(err)
+            ParseError::InputError(ref err) => Some(err),
+            ParseError::IncompleteInputError => None
         }
     }
 }
@@ -88,8 +89,8 @@ impl<'a> Parser<'a> {
     /// Returns false otherwise.
     fn is_punc(& self, s: & str) -> bool {
         let token = match self.tokenizer.peek() {
-            Ok(t) => t,
-            Err(_) => return false
+            Some(Ok(t)) => t,
+            _ => return false
         };
 
         if token.get_type() == TokenType::Punctuation && token.get_value() == s {
@@ -104,22 +105,21 @@ impl<'a> Parser<'a> {
     /// is true. Returns an error otherwise.
     fn skip_punc(& mut self, s: & str) -> Result<(), ParseError> {
         if self.is_punc(s) {
-            try!(self.tokenizer.next());
+            match self.tokenizer.next() {
+                Some(res) => res?,
+                None => return Err(ParseError::IncompleteInputError)
+            };
             Ok(())
         }
         else {
             match self.tokenizer.peek() {
-                Ok(t) => Err(ParseError::from(ExpectedErrorTemplate::new(self.tokenizer.get_input(),
+                Some(Ok(t)) => Err(ParseError::from(ExpectedErrorTemplate::new(self.tokenizer.get_input(),
                                                                          format!("symbol \"{0}\"", s), Some(format!("\"{}\"", t)), t.get_end_pos()))),
-                Err(e) => {
-                    match e {
-                        TokenError::StreamEndError(_) => Err(ParseError::from(ExpectedErrorTemplate::new(self.tokenizer.get_input(), format!("symbol \"{}\"", s),
-                                                                                                         None, self.tokenizer.get_pos() + 1))),
 
-                        TokenError::UnknownTokenError(t, _) => Err(ParseError::from(ExpectedErrorTemplate::new(self.tokenizer.get_input(), format!("symbol \"{}\"", s),
-                                                                                                               Some(format!("\"{}\"", t)), self.tokenizer.get_pos() + 1)))
-                    }
-                }
+                Some(Err(e)) => Err(ParseError::from(e)),
+                
+                None => Err(ParseError::from(ExpectedErrorTemplate::new(self.tokenizer.get_input(), format!("symbol \"{}\"", s),
+                                                                        None, self.tokenizer.get_pos() + 1)))
             }
         }
     }
@@ -128,35 +128,37 @@ impl<'a> Parser<'a> {
     pub fn parse_toplevel(& mut self) -> Result<TreeNode<Token>, ParseError> {
 
         let result = self.parse_expression();
-        if result.is_err() {
-            result
-        }
-        else {
-            // we should have read the whole expression
+        if result.is_ok() {
             if !self.tokenizer.eof() {
-                Err(ParseError::InputError(TokenError::StreamEndError(StreamEndError {})))
-            }
-            else {
-                result
+                return Err(ParseError::ExpectedError(ExpectedErrorTemplate::new(self.tokenizer.get_input(),
+                            "end of input".to_string(), None, self.tokenizer.get_pos() + 1)));
             }
         }
+
+        result
     }
 
     /// Parses an element of the expression. This can be one of the following:
     /// (1) a whole expression in parenthesis
     /// (2) an operand (number, constant or function call)
-    /// (2) an unary operation (that is not further processed)
+    /// (3) an unary operation (that is not further processed)
     fn parse_element(& mut self) -> Result<TreeNode<Token>, ParseError> {
 
         if self.is_punc("(") {
             // expression in parenthesis
-            try!(self.tokenizer.next());
-            let exp = try!(self.parse_expression());
-            try!(self.skip_punc(")"));
+            match self.tokenizer.next() {
+                Some(res) => res?,
+                None => return Err(ParseError::IncompleteInputError)
+            };
+            let exp = self.parse_expression()?;
+            self.skip_punc(")")?;
             return Ok(exp);
         }
         else {
-            let t = try!(self.tokenizer.next());
+            let t = match self.tokenizer.next() {
+                Some(res) => res?,
+                None => return Err(ParseError::IncompleteInputError)
+            };
             let token_type = t.get_type();
 
             match token_type {
@@ -197,9 +199,9 @@ impl<'a> Parser<'a> {
     /// Parses a function call.
     fn parse_function(& mut self, t: Token) -> Result<TreeNode<Token>, ParseError> {
 
-        try!(self.skip_punc("("));
-        let args = try!(self.parse_function_arg_list());
-        try!(self.skip_punc(")"));
+        self.skip_punc("(")?;
+        let args = self.parse_function_arg_list()?;
+        self.skip_punc(")")?;
 
         let mut ret = TreeNode::new(t);
         // add the function arguments as a subtrees to the function
@@ -219,7 +221,7 @@ impl<'a> Parser<'a> {
         }
 
         while !self.tokenizer.eof() {
-            let arg = try!(self.parse_expression());
+            let arg = self.parse_expression()?;
             args.push(arg);
 
             if self.tokenizer.eof() {
@@ -227,7 +229,7 @@ impl<'a> Parser<'a> {
             }
 
             if self.is_punc(",") {
-                try!(self.skip_punc(","));
+                self.skip_punc(",")?;
                 if self.is_punc(")") {
                     let pos = self.tokenizer.get_pos();
                     return Err(ParseError::from(ExpectedErrorTemplate::new(self.tokenizer.get_input(),
@@ -241,7 +243,12 @@ impl<'a> Parser<'a> {
             else {
                 // If in the argument list after an expression neither a "," symbol nor an ")" occurs,
                 // return an error
-                let peeked = try!(self.tokenizer.peek());  // this should be safe because it has been tested for eof
+                let peeked = match self.tokenizer.peek() { // this should be safe because it has been tested for eof
+                    Some(Ok(t)) => t,
+                    Some(Err(e)) => return Err(ParseError::from(e)),
+
+                    None => return Err(ParseError::IncompleteInputError)
+                };
                 return Err(ParseError::from(ExpectedErrorTemplate::new(self.tokenizer.get_input(), "\",\" or \")\"",
                                                                        Some(format!("\"{0}\"", peeked)), peeked.get_end_pos())));
             }
@@ -255,7 +262,7 @@ impl<'a> Parser<'a> {
     /// ("<...>*<...>") followed by an unary expression ("-5")).
     fn parse_operation(& mut self) -> Result<TreeNode<Token>, ParseError> {
 
-        let elem = try!(self.parse_element());
+        let elem = self.parse_element()?;
 
         if !self.tokenizer.eof() {
             if elem.content.get_type() == TokenType::Operation && elem.successors.len() == 0 {
@@ -264,7 +271,7 @@ impl<'a> Parser<'a> {
                 // Hence, if the unary operation has not yet been parsed (that means, the unary
                 // expression has no operand yet), it does not have any successors.
                 if self.context.is_unary_operation(elem.content.get_value()) {
-                    let unary = try!(self.recursive_parse_unary(elem));
+                    let unary = self.recursive_parse_unary(elem)?;
 
                     // After the unary expression, the user input might go on with an binary expression
                     // (e.g. "-3+2"; after the unary expression "-3" the user input goes on with the
@@ -303,15 +310,22 @@ impl<'a> Parser<'a> {
 
         // The argument "left" must be an operand (number constant or function call) or an unary expression
         // (that is interpreted also as a modified operand).
-        let t = try!(self.tokenizer.peek());
+        let t = match self.tokenizer.peek() {
+            Some(Ok(t)) => t,
+            Some(Err(t)) => return Err(ParseError::from(t)),
+            None => return Err(ParseError::IncompleteInputError)
+        };
         if t.get_type() == TokenType::Operation {
             let his_prec = self.context.get_operation_precedence(t.get_value()).unwrap();
             if his_prec > my_prec {
-                let t = try!(self.tokenizer.next());
-                let mut wrap = TreeNode::new(t);
+                let t = match self.tokenizer.next() {
+                    Some(res) => res?,
+                    None => return Err(ParseError::IncompleteInputError)
+                };
+                let mut wrap = TreeNode::new(t); 
                 // "left" is the left operand of the binary operation "t", so add it as an successor
                 wrap.successors.push(Box::new(left));
-                let elem = try!(self.parse_element());
+                let elem = self.parse_element()?;
 
                 // Now, "elem" can either be an operand (number, constant or function call) or
                 // an unary expression (meaning a modified operand)
@@ -320,9 +334,9 @@ impl<'a> Parser<'a> {
                     if self.context.is_unary_operation(elem.content.get_value()) {
 
                         // the unary expression is the right operand of the binary operation "t"
-                        let unary = try!(self.recursive_parse_unary(elem));
+                        let unary = self.recursive_parse_unary(elem)?;
                         if !self.tokenizer.eof() {
-                            let right = try!(self.recursive_parse_binary(unary, his_prec));
+                            let right = self.recursive_parse_binary(unary, his_prec)?;
                             wrap.successors.push(Box::new(right));
                         }
                         else {
@@ -338,7 +352,7 @@ impl<'a> Parser<'a> {
                     // "elem" must be an operand or an parsed unary expression.
                     // Check for further operations with higher precedence than "t".
                     if !self.tokenizer.eof() {
-                        let right = try!(self.recursive_parse_binary(elem, his_prec));
+                        let right = self.recursive_parse_binary(elem, his_prec)?;
                         wrap.successors.push(Box::new(right));
                     }
                     else {
@@ -349,7 +363,7 @@ impl<'a> Parser<'a> {
                 // Check for further binary operations.
                 let ret: TreeNode<Token>;
                 if !self.tokenizer.eof() {
-                    ret = try!(self.recursive_parse_binary(wrap, my_prec));
+                    ret = self.recursive_parse_binary(wrap, my_prec)?;
                 }
                     else {
                     ret = wrap;
@@ -365,7 +379,7 @@ impl<'a> Parser<'a> {
     /// Parses an unary expression.
     fn recursive_parse_unary(& mut self, left: TreeNode<Token>) -> Result<TreeNode<Token>, ParseError> {
 
-        let t = try!(self.parse_element());
+        let t = self.parse_element()?;
         let mut m_left = left;
         let t_type = t.content.get_type();
 
@@ -374,7 +388,7 @@ impl<'a> Parser<'a> {
         if t_type == TokenType::Operation && t.successors.len() == 0 {
             if self.context.is_unary_operation(t.content.get_value()) {
 
-                let unary = try!(self.recursive_parse_unary(t));
+                let unary = self.recursive_parse_unary(t)?;
                 m_left.successors.push(Box::new(unary));
                 Ok(m_left)
             }

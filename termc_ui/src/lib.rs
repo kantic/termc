@@ -363,7 +363,7 @@ impl TerminalUI {
     pub fn save_history_file(&mut self) -> Result<(), AppDirsError> {
 
         if self.mode == TerminalMode::Interactive {
-            let history_path_buf = try!(get_history_file_path());
+            let history_path_buf = get_history_file_path()?;
             let path = history_path_buf.as_path();
             self.editor.as_mut().unwrap().save_history(path).ok();
         }
@@ -403,7 +403,7 @@ fn get_history_file_path() -> Result<PathBuf, AppDirsError> {
     let config_sub_dir = "termc";
     let mut path_buf = match get_app_dir(AppDataType::UserConfig, &APP_INFO, config_sub_dir) {
         Ok(p) => p,
-        Err(_) => try!(app_dir(AppDataType::UserConfig, &APP_INFO, config_sub_dir))
+        Err(_) => app_dir(AppDataType::UserConfig, &APP_INFO, config_sub_dir)?
     };
 
     path_buf.set_file_name("history");

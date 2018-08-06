@@ -95,7 +95,7 @@ pub fn check_for_command(s: & str, context: & mut MathContext, terminal: & mut T
             Some(g) => g.as_str().to_string(), // take user specified file
             None => default_file // take default file
         };
-        try!(load_context(&path, context));
+        load_context(&path, context)?;
         Ok(Some(CommandType::Load(path)))
     }
     else if let Some(cap) = REGEX_SAVE.captures(s) {
@@ -103,7 +103,7 @@ pub fn check_for_command(s: & str, context: & mut MathContext, terminal: & mut T
             Some(g) => g.as_str().to_string(), // take user specified file
             None => default_file // take default file
         };
-        try!(save_context(&path, context));
+        save_context(&path, context)?;
         Ok(Some(CommandType::Save(path)))
     }
     else if let Some(cap) = REGEX_FORMAT.captures(s) {

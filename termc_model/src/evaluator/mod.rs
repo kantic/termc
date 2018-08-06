@@ -135,7 +135,7 @@ trait RadixParse {
     type Output;
     /// Parses the specified string. If the parsing-process succeeds, a value of type Output is returned.
     /// Otherwise, an EvaluationError is returned which marks the specified position end_pos.
-    fn parse_float(s: String, end_pos: u32) -> Result<Self::Output, EvaluationError>;
+    fn parse_float(s: String, end_pos: usize) -> Result<Self::Output, EvaluationError>;
 }
 
 macro_rules! parse_radix {
@@ -198,7 +198,7 @@ macro_rules! parse_radix {
 impl RadixParse for f64 {
     type Output = Self;
     /// Implements the RadixParse trait for the f64 type.
-    fn parse_float(s: String, end_pos: u32) -> Result<Self::Output, EvaluationError> {
+    fn parse_float(s: String, end_pos: usize) -> Result<Self::Output, EvaluationError> {
         if s.starts_with("0x") {
             parse_radix!(s, 16_u32, end_pos)
         }
@@ -227,8 +227,8 @@ impl<'a> Evaluator<'a> {
 
     /// Evaluates the specified expression tree.
     /// The result is None if the evaluated expression is an assignment which returns no numerical value.
-    pub fn evaluate(&'a mut self, tree: & TreeNode<Token>, input: & str) -> Result<Option<MathResult>, EvaluationError> { // Option<MathResult>: if none, then no result (e.g. assignment)
-        let result = try!(self.recursive_evaluate(tree, input));
+    pub fn evaluate(&'a mut self, tree: & TreeNode<Token>, input: &'a str) -> Result<Option<MathResult>, EvaluationError> { // Option<MathResult>: if none, then no result (e.g. assignment)
+        let result = self.recursive_evaluate(tree, &input)?;
         match result {
             EvaluationResult::Numerical(x) => {
                 self.context.add_user_constant("ans", x.clone());
@@ -274,8 +274,8 @@ impl<'a> Evaluator<'a> {
             },
 
             TokenType::Constant | TokenType::UserConstant => {
-                let c_val = try!(self.context.get_constant_value(subtree.content.get_value()).ok_or(
-                    EvaluationError::from(ExpectedErrorTemplate::new(input, "constant", Some(subtree.content.get_value().to_string()), subtree.content.get_end_pos()))));
+                let c_val = self.context.get_constant_value(subtree.content.get_value()).ok_or(
+                    EvaluationError::from(ExpectedErrorTemplate::new(input, "constant", Some(subtree.content.get_value().to_string()), subtree.content.get_end_pos())))?;
                 Ok(EvaluationResult::from(c_val))
             },
 
@@ -295,12 +295,12 @@ impl<'a> Evaluator<'a> {
                             format!("{0} arguments", subtree.successors.len())), subtree.content.get_end_pos())))
                     }
 
-                    let left_val_sym = try!(self.error_if_built_in(subtree.successors[0].as_ref(), input));
+                    let left_val_sym = self.error_if_built_in(subtree.successors[0].as_ref(), input)?;
                     match left_val_sym.content.get_type() {
                         TokenType::Symbol(SymbolicTokenType::UnknownConstant) | TokenType::UserConstant => {
                             self.context.remove_user_constant(left_val_sym.content.get_value());
-                            let right_val = try!(self.recursive_evaluate(subtree.successors[1].as_ref(), input));
-                            let right_val_num = try!(Evaluator::error_if_symbolic(right_val, input));
+                            let right_val = self.recursive_evaluate(subtree.successors[1].as_ref(), input)?;
+                            let right_val_num = Evaluator::error_if_symbolic(right_val, input)?;
                             self.context.add_user_constant(left_val_sym.content.get_value(), right_val_num);
                             Ok(EvaluationResult::from(subtree))
                         },
@@ -308,8 +308,8 @@ impl<'a> Evaluator<'a> {
                         TokenType::Symbol(SymbolicTokenType::UnknownFunction) | TokenType::UserFunction => {
                             let f_name = left_val_sym.content.get_value();
                             self.context.remove_user_function(f_name);
-                            let f_args = try!(Evaluator::get_function_args(left_val_sym, input));
-                            try!(self.check_function_definition(subtree.successors[1].as_ref(), & f_args, input));
+                            let f_args = Evaluator::get_function_args(left_val_sym, input)?;
+                            self.check_function_definition(subtree.successors[1].as_ref(), & f_args, input)?;
                             self.context.add_user_function(f_name, subtree.successors[1].as_ref().clone(), f_args, input);
                             Ok(EvaluationResult::from(subtree))
                         },
@@ -321,12 +321,12 @@ impl<'a> Evaluator<'a> {
                     }
                 }
                 else {
-                    let left_val = try!(self.recursive_evaluate(subtree.successors[0].as_ref(), input));
-                    let left_val_num = try!(Evaluator::error_if_symbolic(left_val, input));
+                    let left_val = self.recursive_evaluate(subtree.successors[0].as_ref(), input)?;
+                    let left_val_num = Evaluator::error_if_symbolic(left_val, input)?;
                     if subtree.successors.len() == 2 {
                         // binary operation
-                        let right_val = try!(self.recursive_evaluate(subtree.successors[1].as_ref(), input));
-                        let right_val_num = try!(Evaluator::error_if_symbolic(right_val, input));
+                        let right_val = self.recursive_evaluate(subtree.successors[1].as_ref(), input)?;
+                        let right_val_num = Evaluator::error_if_symbolic(right_val, input)?;
                         match op_type {
                             OperationType::Add => Ok(EvaluationResult::from(MathContext::operation_add(& left_val_num, & right_val_num))),
                             OperationType::Sub => Ok(EvaluationResult::from(MathContext::operation_sub(& left_val_num, & right_val_num))),
@@ -369,8 +369,8 @@ impl<'a> Evaluator<'a> {
                 // evaluate the provided arguments
                 let mut args : Vec<MathResult> = Vec::new();
                 for s in subtree.successors.iter() {
-                    let x = try!(self.recursive_evaluate(s.as_ref(), input));
-                    let x_num = try!(Evaluator::error_if_symbolic(x, input));
+                    let x = self.recursive_evaluate(s.as_ref(), input)?;
+                    let x_num = Evaluator::error_if_symbolic(x, input)?;
                     args.push(x_num);
                 }
 
@@ -510,7 +510,7 @@ impl<'a> Evaluator<'a> {
         }
         else {
             for succ in  &n.successors {
-                try!(self.check_function_definition(succ, args, input));
+                self.check_function_definition(succ, args, input)?;
             }
 
             Ok(())

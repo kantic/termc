@@ -79,7 +79,7 @@ pub trait Serialization {
             Ok(v) => v,
             Err(err) => return Err(SerializationError::MapGenerationError(err))
         };
-        Ok(try!(Self::build_instance(val)))
+        Ok(Self::build_instance(val)?)
     }
     /// Generates a deserialized instance from the specified JSON object.
     fn build_instance(v: Value) -> Result<Self, SerializationError> where Self: Sized;

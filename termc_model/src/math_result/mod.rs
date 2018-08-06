@@ -22,7 +22,7 @@ impl Serialize for MathResult {
     fn serialize<S>(&self, serializer: S) -> Result<(S::Ok), S::Error> where
         S: Serializer
     {
-        let mut struc = try!(serializer.serialize_struct("MathResult", 3));
+        let mut struc = serializer.serialize_struct("MathResult", 3)?;
         struc.serialize_field("result_type", &self.result_type)?;
         struc.serialize_field("re", &self.value.re)?;
         struc.serialize_field("im", &self.value.im)?;

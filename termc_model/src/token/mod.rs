@@ -37,13 +37,13 @@ pub struct Token {
     value: String,
     /// The position of the first character of the token in the user input string.
     /// (Useful for marking the character in the input string when printing error messages.)
-    end_pos: u32
+    end_pos: usize
 }
 
 impl<'a> Token {
 
     /// Creates a new Token instance.
-    pub fn new(token_type: TokenType, value: String, end_pos: u32) -> Token {
+    pub fn new(token_type: TokenType, value: String, end_pos: usize) -> Token {
         Token {token_type: token_type, value: value, end_pos: end_pos}
     }
 
@@ -58,7 +58,7 @@ impl<'a> Token {
     }
 
     /// Returns the position of the last character of the token in the user input string.
-    pub fn get_end_pos(& self) -> u32 {
+    pub fn get_end_pos(& self) -> usize {
         self.end_pos
     }
 }

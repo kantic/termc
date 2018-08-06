@@ -32,7 +32,7 @@ use result_error::ResultError;
 /// Creates an expression tree from the specified input string.
 fn parse(s: & str, context: & MathContext) -> Result<TreeNode<Token>, ParseError> {
 
-    let mut p = Parser::new(context, s);
+    let mut p = Parser::new(context, &s);
     p.parse_toplevel()
 }
 
@@ -60,8 +60,8 @@ fn evaluate(tree: & TreeNode<Token>, context: & mut MathContext, s: & str) -> Re
 /// }
 /// ```
 pub fn get_result(s: & str, context: & mut MathContext) -> Result<Option<MathResult>, ResultError> {
-    match parse(s, context) {
-        Ok(ref x) => Ok(try!(evaluate(x, context, s))),
+    match parse(s.clone(), context) {
+        Ok(ref x) => Ok(evaluate(x, context, s)?),
         Err(err) => Err(ResultError::from(err))
     }
 }

@@ -6,12 +6,12 @@ pub struct ExpectedErrorTemplate {
     input: String,
     expected: String,
     found: Option<String>,
-    pos: u32
+    pos: usize
 }
 
 impl ExpectedErrorTemplate {
     pub fn new<S1, S2>(input: S1, expected: S2, found: Option<String>,
-               pos: u32) -> ExpectedErrorTemplate where S1: Into<String>, S2: Into<String> {
+               pos: usize) -> ExpectedErrorTemplate where S1: Into<String>, S2: Into<String> {
 
         ExpectedErrorTemplate {input: input.into(), expected: expected.into(),
             found: found, pos: pos}
@@ -36,7 +36,7 @@ impl fmt::Display for ExpectedErrorTemplate {
 }
 
 /// Creates a string that sets a marker at the specified position. The result is the input string with the marker set.
-pub fn create_location_string<S>(input: S, pos: u32) -> String where S: Into<String> {
+pub fn create_location_string<S>(input: S, pos: usize) -> String where S: Into<String> {
     let mut res = input.into();
     res.push('\n');
     for _ in 0..pos {

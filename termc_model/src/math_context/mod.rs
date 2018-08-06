@@ -981,7 +981,7 @@ impl<'a> MathContext {
             NumberType::Complex => NumberType::Complex
         };
 
-        let temp = MathResult::new(NumberType::Complex, -Complex::i() * arg.value);
+        let temp = MathResult::new(NumberType::Complex, -Complex::<f64>::i() * arg.value);
         MathResult::new(t, 1.0_f64 / Complex::i() * MathContext::function_arccot(& temp).value)
     }
 

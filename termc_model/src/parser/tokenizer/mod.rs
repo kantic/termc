@@ -7,36 +7,37 @@ use std::error::Error;
 use error_templates::create_location_string;
 use token::{Token, TokenType, SymbolicTokenType, NumberType};
 use parser::tokenizer::input_stream::InputStream;
-use parser::tokenizer::input_stream::StreamEndError;
 use math_context::MathContext;
 
-/// Defines the errors that can occur while tokenizing the input stream.
+/// Defines the error if an invalid / unknown token has been read.
 #[derive(Clone, Debug)]
-pub enum TokenError {
-    /// The input stream has reached it's end but a new token has been requested.
-    /// Arguments: The StreamEndError that causes the token StreamEndError
-    StreamEndError(StreamEndError),
-    /// An unknown token has been read.
-    /// Arguments: The symbol that is unknown, input string, message that shall appear in the location mark string
-    UnknownTokenError(String, String)
+pub struct TokenError {
+    /// The invalid / unknown token.
+    token: String,
+    /// The location mark string.
+    location: String
 }
 
-impl From<StreamEndError> for TokenError {
-
-    /// Converts an StreamEndError into a TokenError.
-    fn from(err: StreamEndError) -> TokenError {
-        TokenError::StreamEndError(err)
+impl TokenError {
+    pub fn new(token: String, location: String) -> Self {
+        TokenError {token: token, location: location}
     }
+
+    pub fn get_token(&self) -> &str {
+        &self.token
+    }
+
+    pub fn get_location(&self) -> &str {
+        &self.location
+    }
+
 }
 
 impl fmt::Display for TokenError {
 
     /// Returns the formatted error message.
     fn fmt(& self, f: & mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            TokenError::StreamEndError(_) => write!(f, "Error: Unexpected end of input reached."),
-            TokenError::UnknownTokenError(ref s, ref l) => write!(f, "Error: Unknown token found: \"{}\".\n{}", s, l)
-        }
+        write!(f, "Error: Unknown token found: \"{}\".\n{}", self.token, self.location)
     }
 }
 
@@ -44,18 +45,12 @@ impl Error for TokenError {
 
     /// Returns the description of the error.
     fn description(& self) -> & str {
-        match *self {
-            TokenError::StreamEndError(_) => "There are no more tokens available to read.",
-            TokenError::UnknownTokenError(_, _) => "A token could not be interpreted."
-        }
+        "An unknown token has been read."
     }
 
     /// Returns the preceding error.
     fn cause(& self) -> Option<& Error> {
-        match *self {
-            TokenError::StreamEndError(ref err) => Some(err),
-            TokenError::UnknownTokenError(_, _) => None
-        }
+        None
     }
 }
 
@@ -66,36 +61,33 @@ pub struct Tokenizer<'a> {
     /// The character input stream.
     input_stream: InputStream<'a>,
     /// The current token.
-    token: Result<Token, TokenError>
+    token: Option<Result<Token, TokenError>>
 }
 
 impl<'a> Tokenizer<'a> {
 
     /// Creates a new Tokenizer instance.
     pub fn new(context: &'a MathContext, input: &'a str) -> Tokenizer<'a> {
-        let mut t = Tokenizer{context: context, input_stream: InputStream::new(input), token: Err(TokenError::StreamEndError(StreamEndError{}))};
+        let mut t = Tokenizer{context: context, input_stream: InputStream::new(input), token: None};
         t.token = t.read_dispatcher();
         t
     }
 
     /// Returns the current token from the token input stream without discarding it.
-    pub fn peek(& self) -> Result<Token, TokenError> {
-        match self.token {
-            Ok(ref x) => Ok(x.clone()),
-            Err(ref e) => Err(e.clone())
-        }
+    pub fn peek(&self) -> Option<Result<Token, TokenError>> {
+        self.token.clone()
     }
 
     /// Returns the current token from the input stream and reads the next token.
-    pub fn next(& mut self) -> Result<Token, TokenError> {
-        let token : Result<Token, TokenError> = self.token.clone();
+    pub fn next(& mut self) -> Option<Result<Token, TokenError>> {
+        let token = self.token.clone();
         self.token = self.read_dispatcher();
         token
     }
 
     /// Returns the position of the current token (the last character) in the input string of the
     /// input stream.
-    pub fn get_pos(& self) -> u32 {
+    pub fn get_pos(& self) -> usize {
         self.input_stream.get_pos() - 1
     }
 
@@ -106,40 +98,36 @@ impl<'a> Tokenizer<'a> {
 
     /// Returns true if there are no more tokens to read. Returns false otherwise.
     pub fn eof(& self) -> bool {
-        match self.token {
-            Ok(_) => false,
-            Err(ref e) => match e {
-                &TokenError::StreamEndError(_) => {
-                    true
-                },
-                _ => {
-                    false
-                }
-            }
-        }
+       match self.peek() {
+           Some(_) => false,
+           None => true
+       }
     }
 
     /// Calls the correct reading method regarding the current token.
-    fn read_dispatcher(& mut self) -> Result<Token, TokenError> {
+    fn read_dispatcher(& mut self) -> Option<Result<Token, TokenError>> {
         self.ignore_while(Tokenizer::is_whitespace);
-        let peeked_char = try!(self.input_stream.peek());
+        let peeked_char = match self.input_stream.peek() {
+           Some(c) => c,
+           None => return None
+        };
 
         if self.context.is_literal_symbol(& peeked_char) {
-            return self.read_char_sequence();
+            Some(Ok(self.read_char_sequence()))
         }
         else if self.context.is_number_symbol(& peeked_char) || peeked_char == '.' {
-            return Ok(self.read_number());
+            Some(Ok(self.read_number()))
         }
         else if self.context.is_operation(& peeked_char.to_string()) {
-            return Ok(self.read_operation());
+            Some(Ok(self.read_operation()))
         }
         else if self.context.is_punctuation_symbol(& peeked_char) {
-            return Ok(self.read_punctuation());
+            Some(Ok(self.read_punctuation()))
         }
         else {
             // this case is executed e.g. if an input character is unusual, e.g. "§"
-            return Err(TokenError::UnknownTokenError(peeked_char.to_string(), create_location_string(
-                self.input_stream.get_input(), self.input_stream.get_pos())));
+            Some(Err(TokenError::new(peeked_char.to_string(), create_location_string(
+                self.input_stream.get_input(), self.input_stream.get_pos()))))
         }
     }
 
@@ -147,7 +135,7 @@ impl<'a> Tokenizer<'a> {
     fn ignore_while<F>(& mut self, closure: F) -> () where F : Fn(char) -> bool {
 
         let mut peeked = self.input_stream.peek();
-        while peeked.is_ok() && closure(peeked.unwrap()) {
+        while peeked.is_some() && closure(peeked.unwrap()) {
 
             self.input_stream.next();
             peeked = self.input_stream.peek();
@@ -158,9 +146,9 @@ impl<'a> Tokenizer<'a> {
     fn read_number(& mut self) -> Token {
 
         let mut value = String::new();
-        let mut is_first_digit : bool = true;
-        let mut last_was_e : bool = false;
-        let mut formatting_zero : bool = false;
+        let mut is_first_digit = true;
+        let mut last_was_e = false;
+        let mut formatting_zero = false;
         let mut num_type = NumberType::Real;
 
         while !self.input_stream.eof() {
@@ -235,13 +223,13 @@ impl<'a> Tokenizer<'a> {
     }
 
     /// Reads a constant or a function token from the input stream.
-    fn read_char_sequence(& mut self) -> Result<Token, TokenError> {
+    fn read_char_sequence(& mut self) -> Token {
 
         let mut value = String::new();
 
         while !self.input_stream.eof() {
 
-            let peeked_char = try!(self.input_stream.peek());
+            let peeked_char = self.input_stream.peek().unwrap();
             if self.context.is_literal_symbol(& peeked_char) || self.context.is_number_symbol(& peeked_char) {
                 value.push(self.input_stream.next().unwrap());
             }
@@ -253,7 +241,7 @@ impl<'a> Tokenizer<'a> {
         let token : Token;
         let mut next_is_paren = false;
         if !self.input_stream.eof() {
-            let peeked_char = try!(self.input_stream.peek());
+            let peeked_char = self.input_stream.peek().unwrap();
             if peeked_char == '(' {
                 next_is_paren = true;
             }
@@ -296,7 +284,7 @@ impl<'a> Tokenizer<'a> {
                                self.get_pos());
         }
 
-        Ok(token)
+        token
     }
 
     /// Reads an operation token from the input stream.
@@ -305,7 +293,6 @@ impl<'a> Tokenizer<'a> {
         let mut value = String::new();
 
         if !self.input_stream.eof() {
-
             value.push(self.input_stream.next().unwrap());
         }
 
@@ -327,6 +314,6 @@ impl<'a> Tokenizer<'a> {
 
     /// Returns true if the specified character is a whitespace character, false otherwise.
     fn is_whitespace(c: char) -> bool {
-        " \t\n".contains(c)
+        c.is_whitespace()
     }
 }
