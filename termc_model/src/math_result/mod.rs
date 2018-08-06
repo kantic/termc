@@ -1,5 +1,4 @@
 use std::fmt;
-use std::mem::transmute;
 use f64formatter::F64Formatter;
 use serde::{Serialize, Serializer, Deserialize, Deserializer};
 use serde::ser::{SerializeStruct};
@@ -257,8 +256,7 @@ impl FormatIEEE754 for MathResult {
                     format!("{0}", self.value.re)
                 }
                 else {
-                    let pattern : u64 = unsafe {transmute::<f64, u64>(self.value.re)};
-                    format!("{0:#b}", pattern)
+                    format!("{0:#b}", self.value.re.to_bits())
                 }
             },
             NumberType::Complex => {
@@ -267,10 +265,8 @@ impl FormatIEEE754 for MathResult {
                     format!("{0}", self.value)
                 }
                 else {
-                    let re_bin : u64 = unsafe {transmute::<f64, u64>(self.value.re)};
-                    let im_bin : u64 = unsafe {transmute::<f64, u64>(self.value.im)};
-                    let tmp : Complex<u64> = Complex::new(re_bin, im_bin);
-                    format!("{0:#b}", tmp)
+                    format!("{0:#b}", Complex::new(self.value.re.to_bits(), 
+                                                   self.value.im.to_bits()))
                 }
             }
         }
